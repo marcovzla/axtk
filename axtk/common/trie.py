@@ -33,14 +33,18 @@ class Trie:
             return node.is_end
         return False
 
-    def next_allowed_tokens(self, batch_id: int, input_ids: Iterable[int]) -> list[int]:
+    def prefix_allowed_tokens(self, batch_id: int, input_ids: Iterable[int]) -> list[int]:
         """
         Method that returns a list with the allowed tokens for the next
         generation step conditioned on the previously generated tokens
         input_ids. This method can be used as the prefix_allowed_tokens_fn
         parameter of the model.generate() method in huggingface transformers.
         """
-        if node := self.get_node(input_ids):
+        return self.next_allowed_tokens(input_ids)
+
+    def next_allowed_tokens(self, prefix: Iterable[int]) -> list[int]:
+        """Returns a list with the next allowed tokens conditioned on the provided prefix."""
+        if node := self.get_node(prefix):
             return list(node.children.keys())
         return []
 
