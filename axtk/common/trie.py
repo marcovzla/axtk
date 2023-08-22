@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Optional
 from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 
 
 try:
@@ -12,10 +13,10 @@ except:
         return x
 
 
+@dataclass(repr=False)
 class Trie:
-    def __init__(self):
-        self.is_end: bool = False
-        self.children: dict[int, Trie] = {}
+    children: dict[int, Trie] = {}
+    is_end: bool = False
 
     def num_sequences(self) -> int:
         """Returns the number of sequences stored in the trie."""
