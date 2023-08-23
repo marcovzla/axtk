@@ -9,7 +9,7 @@ from axtk.pytorch.viterbi import batch_decode
 LARGE_NUMBER = 100_000
 
 
-class LinearChainConditionalRandomField(nn.Module):
+class LinearChainCRF(nn.Module):
     def __init__(
             self,
             num_labels: int,
