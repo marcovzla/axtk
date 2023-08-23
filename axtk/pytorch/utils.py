@@ -46,7 +46,7 @@ def get_device(module: torch.nn.Module) -> torch.device:
 
 def move_to_device(obj: Any, device: str | torch.device):
     """Searches for tensors in containers and moves them to the specified device."""
-    if torch.is_tensor(obj):
+    if isinstance(obj, torch.Tensor):
         return obj.to(device)
     elif dataclasses.is_dataclass(obj):
         return obj.__class__(*(move_to_device(x, device) for x in dataclasses.astuple(obj)))
