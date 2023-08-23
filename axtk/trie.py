@@ -2,15 +2,12 @@ from __future__ import annotations
 from typing import Optional
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
+import torch
 
 
-try:
-    import torch
-    def handle_tensor(x):
-        return x.tolist() if isinstance(x, torch.Tensor) else x
-except:
-    def handle_tensor(x):
-        return x
+def handle_tensor(x: Iterable[int]) -> Iterable[int]:
+    """Helper function to convert tensors into lists."""
+    return x.tolist() if isinstance(x, torch.Tensor) else x
 
 
 @dataclass(repr=False)
