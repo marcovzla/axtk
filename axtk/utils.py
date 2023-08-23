@@ -14,7 +14,7 @@ def is_pathlike(obj) -> bool:
     return isinstance(obj, (str, os.PathLike))
 
 
-def is_in_notebook():
+def is_in_notebook() -> bool:
     """Returns True if running in a Jupyter Notebook."""
     try:
         get_ipython = sys.modules['IPython'].get_ipython
