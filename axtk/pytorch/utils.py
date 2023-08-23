@@ -10,7 +10,7 @@ import numpy as np
 from axtk.utils import is_namedtuple
 
 
-def random_seed(self, seed: int) -> torch.Generator:
+def random_seed(seed: int) -> torch.Generator:
     random.seed(seed)
     np.random.seed(seed)
     return torch.manual_seed(seed)
