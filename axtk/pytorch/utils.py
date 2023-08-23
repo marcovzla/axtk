@@ -10,14 +10,14 @@ import numpy as np
 from axtk.utils import is_namedtuple
 
 
-def random_seed(seed: int) -> torch.Generator:
+def set_seed(seed: int) -> torch.Generator:
     random.seed(seed)
     np.random.seed(seed)
     return torch.manual_seed(seed)
 
 
 def enable_full_determinism(seed: int, warn_only: bool = False):
-    random_seed(seed)
+    set_seed(seed)
     # https://docs.nvidia.com/cuda/cublas/index.html#results-reproducibility
     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':16:8'
     # https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#concurrent-execution-between-host-and-device
@@ -36,7 +36,7 @@ def seed_worker(worker_id: int):
     See https://pytorch.org/docs/stable/notes/randomness.html#dataloader.
     """
     worker_seed = torch.initial_seed() % 2**32
-    random_seed(worker_seed)
+    set_seed(worker_seed)
 
 
 def get_device(module: torch.nn.Module) -> torch.device:
