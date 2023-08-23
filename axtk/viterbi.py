@@ -2,7 +2,7 @@ from typing import Optional
 from collections.abc import Sequence
 import torch
 import torch.nn.functional as F
-from axtk.common.token_labeling import is_valid_transition
+from axtk.token_labeling import is_valid_transition
 
 
 LARGE_NUMBER = 100_000
@@ -46,7 +46,7 @@ def batch_decode(
     batch_label_ids, batch_scores = [], []
     for i in range(batch_size):
         # decode label_ids using viterbi algorithm
-        label_ids, scores = viterbi_decode(
+        label_ids, scores = decode(
             emissions=emissions[i, mask[i]],
             transition_matrix=transition_matrix,
             start_transitions=start_transitions,
@@ -62,7 +62,7 @@ def batch_decode(
     return torch.concat(batch_label_ids), torch.concat(batch_scores)
 
 
-def viterbi_decode(
+def decode(
         emissions: torch.FloatTensor,
         transition_matrix: torch.FloatTensor,
         observations: Optional[Sequence[int]] = None,

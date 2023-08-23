@@ -146,3 +146,36 @@ def defrag_(
         tensor.squeeze_(dim=0)
     # return results
     return tensor
+
+
+def shift_value_range(
+        tensor: torch.Tensor,
+        source_range: Optional[tuple[Number, Number]] = None,
+        target_range: tuple[Number, Number] = (0, 1),
+        clip_values: bool = True,
+) -> torch.Tensor:
+    """
+    Shifts the values of a tensor from source_range to target_range.
+    If target_range is not provided, it defaults to (0, 1).
+    If source_range is not provided, it defaults to the tensor's min and max values.
+    If source_range is provided and clip_values is set to True (default), the tensor's values are clipped.
+    """
+    tensor = tensor.float()
+    if source_range is None:
+        # if source_range was not provided, infer it from the input tensor values
+        source_range = (tensor.min().item(), tensor.max().item())
+    elif clip_values:
+        # if source_range was provided and clip_values is true, clip input tensor values
+        tensor = tensor.clip(*source_range)
+    # shift from source_range to 0-1 range
+    if source_range != (0, 1):
+        from_min, from_max = source_range
+        tensor -= from_min
+        tensor /= from_max - from_min
+    # shift from 0-1 range to target_range
+    if target_range != (0, 1):
+        to_min, to_max = target_range
+        tensor *= to_max - to_min
+        tensor += to_min
+    # return shifted tensor
+    return tensor

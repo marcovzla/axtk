@@ -2,11 +2,8 @@ from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from axtk.pytorch.utils import defrag
-from axtk.pytorch.viterbi import batch_decode
-
-
-LARGE_NUMBER = 100_000
+from axtk import viterbi
+from axtk.torch_utils import defrag
 
 
 class LinearChainCRF(nn.Module):
@@ -154,7 +151,7 @@ class LinearChainCRF(nn.Module):
         # transitions log-probabilities
         transitions, start_transitions, end_transitions = self.get_transitions(inference=True)
         # decode labels
-        return batch_decode(
+        return viterbi.batch_decode(
             emissions=emissions.cpu(),
             mask=mask.cpu(),
             transition_matrix=transitions.cpu(),
