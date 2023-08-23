@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from axtk import viterbi
-from axtk.torch_utils import defrag
+from axtk.torch_utils import defrag, get_device
 
 
 class LinearChainCRF(nn.Module):
@@ -53,21 +53,17 @@ class LinearChainCRF(nn.Module):
         # store constraints
         self.register_buffer('transition_constraints', transition_constraints)
 
-    def get_transitions(self, inference: bool = False):
+    def get_transitions(self, apply_constraints: bool = False):
         transitions = self.transition_matrix
         # apply constraints
-        if inference: transitions = transitions + self.transition_constraints
+        if apply_constraints:
+            transitions = transitions + self.transition_constraints
         # log-softmax
         transitions = F.log_softmax(transitions, dim=1)
         # separate start and end transitions
         transition_matrix = transitions[:-2, :-2]
         start_transitions = transitions[self.start, :-2]
         end_transitions = transitions[:-2, self.end]
-        # detach tensors
-        if inference:
-            transition_matrix.detach_()
-            start_transitions.detach_()
-            end_transitions.detach_()
         # return results
         return transition_matrix, start_transitions, end_transitions
 
@@ -126,13 +122,17 @@ class LinearChainCRF(nn.Module):
             mask=mask,
         )
 
+    @torch.no_grad()
     def batch_decode(
             self,
             *,
             logits: Optional[torch.Tensor] = None,
             emissions: Optional[torch.Tensor] = None,
-            mask: Optional[torch.Tensor] = None
+            mask: Optional[torch.Tensor] = None,
+            device: Optional[torch.device] = None,
     ) -> tuple[torch.LongTensor, torch.FloatTensor]:
+        if device is None:
+            device = get_device(self)
         # ensure we have emission log-probabilities
         if emissions is None and logits is None:
             raise ValueError('either emissions or logits must be provided')
@@ -149,14 +149,14 @@ class LinearChainCRF(nn.Module):
         emissions = defrag(emissions, mask)
         mask = defrag(mask, mask, pad=False)
         # transitions log-probabilities
-        transitions, start_transitions, end_transitions = self.get_transitions(inference=True)
+        transitions, start_transitions, end_transitions = self.get_transitions(apply_constraints=True)
         # decode labels
         return viterbi.batch_decode(
-            emissions=emissions.cpu(),
-            mask=mask.cpu(),
-            transition_matrix=transitions.cpu(),
-            start_transitions=start_transitions.cpu(),
-            end_transitions=end_transitions.cpu(),
+            emissions=emissions.to(device),
+            mask=mask.to(device),
+            transition_matrix=transitions.to(device),
+            start_transitions=start_transitions.to(device),
+            end_transitions=end_transitions.to(device),
             pad_token_id=self.ignore_index,
         )
 
