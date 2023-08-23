@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
-from axtk.common.spans import Span
+from axtk.span import Span
 
 
 
