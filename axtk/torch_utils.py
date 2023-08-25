@@ -4,7 +4,7 @@ import random
 import dataclasses
 from numbers import Number
 from collections.abc import MutableMapping, MutableSequence
-from typing import Any, Optional, Literal
+from typing import Any, Optional, Literal, Union
 import torch
 import numpy as np
 from axtk.utils import is_namedtuple
@@ -179,3 +179,24 @@ def shift_value_range(
         tensor += to_min
     # return shifted tensor
     return tensor
+
+
+def slerp(
+        v0: torch.Tensor,
+        v1: torch.Tensor,
+        t: Union[float, torch.Tensor],
+        dim: Optional[bool] = None,
+):
+    """Spherical linear interpolation."""
+    # https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
+    keepdim = dim is not None
+    v0_norm = v0 / torch.linalg.vector_norm(v0, dim=dim, keepdim=keepdim)
+    v1_norm = v1 / torch.linalg.vector_norm(v1, dim=dim, keepdim=keepdim)
+    omega = torch.acos(torch.sum(v0_norm * v1_norm, dim=dim))
+    sin_omega = torch.sin(omega)
+    t0 = torch.where(sin_omega == 0, 1 - t, torch.sin((1 - t) * omega) / sin_omega)
+    t1 = torch.where(sin_omega == 0, t, torch.sin(t * omega) / sin_omega)
+    if dim is not None:
+        t0.unsqueeze_(dim=dim)
+        t1.unsqueeze_(dim=dim)
+    return t0 * v0 + t1 * v1
