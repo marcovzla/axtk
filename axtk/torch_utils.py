@@ -182,21 +182,21 @@ def shift_value_range(
 
 
 def slerp(
-        v0: torch.Tensor,
-        v1: torch.Tensor,
+        start: torch.Tensor,
+        end: torch.Tensor,
         t: Union[float, torch.Tensor],
         dim: Optional[bool] = None,
 ):
     """Spherical linear interpolation."""
     # https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
     keepdim = dim is not None
-    v0_norm = v0 / torch.linalg.vector_norm(v0, dim=dim, keepdim=keepdim)
-    v1_norm = v1 / torch.linalg.vector_norm(v1, dim=dim, keepdim=keepdim)
-    omega = torch.acos(torch.sum(v0_norm * v1_norm, dim=dim))
+    start_norm = start / torch.linalg.vector_norm(start, dim=dim, keepdim=keepdim)
+    end_norm = end / torch.linalg.vector_norm(end, dim=dim, keepdim=keepdim)
+    omega = torch.acos(torch.sum(start_norm * end_norm, dim=dim))
     sin_omega = torch.sin(omega)
     t0 = torch.where(sin_omega == 0, 1 - t, torch.sin((1 - t) * omega) / sin_omega)
     t1 = torch.where(sin_omega == 0, t, torch.sin(t * omega) / sin_omega)
     if dim is not None:
         t0.unsqueeze_(dim=dim)
         t1.unsqueeze_(dim=dim)
-    return t0 * v0 + t1 * v1
+    return t0 * start + t1 * end
