@@ -1,21 +1,17 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union, Literal
+from enum import Enum
 from axtk.span import Span
 
 
 
-ANNOTATION_SCHEMES = {
-    'IOB1',
-    'IOB2',
-    'BILOU',
-    'IOBES',
-}
+class Scheme(str, Enum):
+    IOB1 = 'IOB1'
+    IOB2 = 'IOB2'
+    BILOU = 'BILOU'
+    IOBES = 'IOBES'
 
-SCHEME_SYNONYMS = {
-    'IOB': 'IOB1',
-    'BILUO': 'BILOU',
-    'BIOES': 'IOBES',
-}
+LabelingScheme = Union[Scheme, Literal['IOB1', 'IOB2', 'BILOU', 'IOBES']]
 
 
 
@@ -25,76 +21,67 @@ class TokenSpan(Span):
 
 
 
-def normalize_scheme(scheme: str) -> str:
-    scheme_upper = scheme.upper()
-    scheme_upper = SCHEME_SYNONYMS.get(scheme_upper, scheme_upper)
-    if scheme_upper not in ANNOTATION_SCHEMES:
-        raise ValueError(f'invalid {scheme=}')
-    return scheme_upper
-
-
-
-def is_valid_label(label: str, scheme: str) -> bool:
-    scheme = normalize_scheme(scheme)
-    if scheme == 'IOB1':
+def is_valid_label(label: str, scheme: LabelingScheme) -> bool:
+    scheme = Scheme(scheme)
+    if scheme == Scheme.IOB1:
         return iob_valid_label(label)
-    elif scheme == 'IOB2':
+    elif scheme == Scheme.IOB2:
         return iob2_valid_label(label)
-    elif scheme == 'BILOU':
+    elif scheme == Scheme.BILOU:
         return biluo_valid_label(label)
-    elif scheme == 'IOBES':
+    elif scheme == Scheme.IOBES:
         return iobes_valid_label(label)
     else:
         raise ValueError(f'invalid {scheme=}')
 
 
 
-def is_valid_transition(from_label: Optional[str], to_label: Optional[str], scheme: str) -> bool:
-    scheme = normalize_scheme(scheme)
-    if scheme == 'IOB1':
+def is_valid_transition(from_label: Optional[str], to_label: Optional[str], scheme: LabelingScheme) -> bool:
+    scheme = Scheme(scheme)
+    if scheme == Scheme.IOB1:
         return iob_valid_transition(from_label, to_label)
-    elif scheme == 'IOB2':
+    elif scheme == Scheme.IOB2:
         return iob2_valid_transition(from_label, to_label)
-    elif scheme == 'BILOU':
+    elif scheme == Scheme.BILOU:
         return biluo_valid_transition(from_label, to_label)
-    elif scheme == 'IOBES':
+    elif scheme == Scheme.IOBES:
         return iobes_valid_transition(from_label, to_label)
     else:
         raise ValueError(f'invalid {scheme=}')
 
 
 
-def load_spans(labels: list[str], scheme: str) -> list[TokenSpan]:
-    scheme = normalize_scheme(scheme)
-    if scheme == 'IOB1':
+def load_spans(labels: list[str], scheme: LabelingScheme) -> list[TokenSpan]:
+    scheme = Scheme(scheme)
+    if scheme == Scheme.IOB1:
         return iob_to_spans(labels)
-    elif scheme == 'IOB2':
+    elif scheme == Scheme.IOB2:
         return iob2_to_spans(labels)
-    elif scheme == 'BILOU':
+    elif scheme == Scheme.BILOU:
         return biluo_to_spans(labels)
-    elif scheme == 'IOBES':
+    elif scheme == Scheme.IOBES:
         return iobes_to_spans(labels)
     else:
         raise ValueError(f'invalid {scheme=}')
 
 
 
-def dump_spans(num_tokens: int, spans: list[TokenSpan], scheme: str) -> list[str]:
-    scheme = normalize_scheme(scheme)
-    if scheme == 'IOB1':
+def dump_spans(num_tokens: int, spans: list[TokenSpan], scheme: LabelingScheme) -> list[str]:
+    scheme = Scheme(scheme)
+    if scheme == Scheme.IOB1:
         return spans_to_iob(num_tokens, spans)
-    elif scheme == 'IOB2':
+    elif scheme == Scheme.IOB2:
         return spans_to_iob2(num_tokens, spans)
-    elif scheme == 'BILOU':
+    elif scheme == Scheme.BILOU:
         return spans_to_biluo(num_tokens, spans)
-    elif scheme == 'IOBES':
+    elif scheme == Scheme.IOBES:
         return spans_to_iobes(num_tokens, spans)
     else:
         raise ValueError(f'invalid {scheme=}')
 
 
 
-def convert_labels(labels: list[str], from_scheme: str, to_scheme: str) -> list[str]:
+def convert_labels(labels: list[str], from_scheme: LabelingScheme, to_scheme: LabelingScheme) -> list[str]:
     return dump_spans(len(labels), load_spans(labels, from_scheme), to_scheme)
 
 
@@ -102,7 +89,7 @@ def convert_labels(labels: list[str], from_scheme: str, to_scheme: str) -> list[
 def parse_label(label: str, sep: str = '-') -> tuple[Optional[str], Optional[str]]:
     if sep in label:
         return tuple(label.split(sep=sep, maxsplit=1))
-    elif label in {'O', 'B', 'I', 'L', 'U', 'E', 'S'}:
+    elif label in 'OBILUES':
         return label, None
     else:
         return None, label
@@ -110,92 +97,92 @@ def parse_label(label: str, sep: str = '-') -> tuple[Optional[str], Optional[str
 
 
 def iob_valid_label(label: str) -> bool:
-    return label and label[0] in {'B', 'I', 'O'}
+    return label and label[0] in 'BIO'
 
 def iob2_valid_label(label: str) -> bool:
-    return label and label[0] in {'B', 'I', 'O'}
+    return label and label[0] in 'BIO'
 
 def biluo_valid_label(label: str) -> bool:
-    return label and label[0] in {'B', 'I', 'L', 'U', 'O'}
+    return label and label[0] in 'BILUO'
 
 def iobes_valid_label(label: str) -> bool:
-    return label and label[0] in {'B', 'I', 'E', 'S', 'O'}
+    return label and label[0] in 'IOBES'
 
 
 
 def iob_valid_transition(from_label: Optional[str], to_label: Optional[str]) -> bool:
     if from_label is None:
-        return to_label is not None and to_label[0] in {'I', 'O'}
+        return to_label is not None and to_label[0] in 'IO'
     if to_label is None:
         return True
     from_tag, from_entity = parse_label(from_label)
     to_tag, to_entity = parse_label(to_label)
-    if from_tag == 'O' and to_tag in {'O', 'I'}:
+    if from_tag == 'O' and to_tag in 'IO':
         return True
     if from_tag == 'B' and to_tag == 'I':
         return from_entity == to_entity
-    if from_tag == 'B' and to_tag in {'O', 'B'}:
+    if from_tag == 'B' and to_tag in 'BO':
         return True
     if from_tag == 'I' and to_tag == 'I':
         return from_entity == to_entity
-    if from_tag == 'I' and to_tag in {'O', 'B'}:
+    if from_tag == 'I' and to_tag in 'BO':
         return True
     return False
 
 def iob2_valid_transition(from_label: Optional[str], to_label: Optional[str]) -> bool:
     if from_label is None:
-        return to_label is not None and to_label[0] in {'B', 'O'}
+        return to_label is not None and to_label[0] in 'BO'
     if to_label is None:
         return True
     from_tag, from_entity = parse_label(from_label)
     to_tag, to_entity = parse_label(to_label)
-    if from_tag == 'O' and to_tag in {'O', 'B'}:
+    if from_tag == 'O' and to_tag in 'BO':
         return True
     if from_tag == 'B' and to_tag == 'I':
         return from_entity == to_entity
-    if from_tag == 'B' and to_tag in {'O', 'B'}:
+    if from_tag == 'B' and to_tag in 'BO':
         return True
     if from_tag == 'I' and to_tag == 'I':
         return from_entity == to_entity
-    if from_tag == 'I' and to_tag in {'O', 'B'}:
+    if from_tag == 'I' and to_tag in 'BO':
         return True
     return False
 
 def biluo_valid_transition(from_label: Optional[str], to_label: Optional[str]) -> bool:
     if from_label is None:
-        return to_label is not None and to_label[0] in {'B', 'U', 'O'}
+        return to_label is not None and to_label[0] in 'BUO'
     from_tag, from_entity = parse_label(from_label)
     if to_label is None:
-        return from_tag in {'L', 'U', 'O'}
+        return from_tag in 'LUO'
     to_tag, to_entity = parse_label(to_label)
-    if from_tag == 'O' and to_tag in {'O', 'B', 'U'}:
+    if from_tag == 'O' and to_tag in 'BUO':
         return True
-    if from_tag == 'B' and to_tag in {'I', 'L'}:
+    if from_tag == 'B' and to_tag in 'IL':
         return from_entity == to_entity
-    if from_tag == 'I' and to_tag in {'I', 'L'}:
+    if from_tag == 'I' and to_tag in 'IL':
         return from_entity == to_entity
-    if from_tag == 'L' and to_tag in {'O', 'B', 'U'}:
+    if from_tag == 'L' and to_tag in 'BUO':
         return True
-    if from_tag == 'U' and to_tag in {'O', 'B', 'U'}:
+    if from_tag == 'U' and to_tag in 'BUO':
         return True
     return False
 
 def iobes_valid_transition(from_label: Optional[str], to_label: Optional[str]) -> bool:
     if from_label is None:
-        return to_label is not None and to_label[0] in {'B', 'S', 'O'}
+        return to_label is not None and to_label[0] in 'OBS'
     from_tag, from_entity = parse_label(from_label)
     if to_label is None:
-        return from_tag in {'E', 'U', 'O'}
+        return from_tag in 'EUO'
     to_tag, to_entity = parse_label(to_label)
-    if from_tag == 'O' and to_tag in {'O', 'B', 'S'}:
+    if from_tag == 'O' and to_tag in 'OBS':
         return True
-    if from_tag == 'B' and to_tag in {'I', 'E'}:
+    if from_tag == 'B' and to_tag in 'IE':
         return from_entity == to_entity
-    if from_tag == 'I' and to_tag in {'I', 'E'}:
+    if from_tag == 'I' and to_tag in 'IE':
         return from_entity == to_entity
-    if from_tag == 'E' and to_tag in {'O', 'B', 'S'}:
+    if from_tag == 'E' and to_tag in 'OBS':
         return True
-    if from_tag == 'S' and to_tag in {'O', 'B', 'S'}:
+    if from_tag == 'S' and to_tag in 'OBS':
         return True
     return False
 
