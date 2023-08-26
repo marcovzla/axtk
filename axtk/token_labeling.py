@@ -6,12 +6,13 @@ from axtk.span import Span
 
 
 class Scheme(str, Enum):
+    IO = 'IO'
     IOB1 = 'IOB1'
     IOB2 = 'IOB2'
     BILOU = 'BILOU'
     IOBES = 'IOBES'
 
-LabelingScheme = Union[Scheme, Literal['IOB1', 'IOB2', 'BILOU', 'IOBES']]
+LabelingScheme = Union[Scheme, Literal['IO', 'IOB1', 'IOB2', 'BILOU', 'IOBES']]
 
 
 
@@ -23,7 +24,9 @@ class TokenSpan(Span):
 
 def is_valid_label(label: str, scheme: LabelingScheme) -> bool:
     scheme = Scheme(scheme)
-    if scheme == Scheme.IOB1:
+    if scheme == Scheme.IO:
+        return io_valid_label(label)
+    elif scheme == Scheme.IOB1:
         return iob1_valid_label(label)
     elif scheme == Scheme.IOB2:
         return iob2_valid_label(label)
@@ -38,7 +41,9 @@ def is_valid_label(label: str, scheme: LabelingScheme) -> bool:
 
 def is_valid_transition(from_label: Optional[str], to_label: Optional[str], scheme: LabelingScheme) -> bool:
     scheme = Scheme(scheme)
-    if scheme == Scheme.IOB1:
+    if scheme == Scheme.IO:
+        return io_valid_transition(from_label, to_label)
+    elif scheme == Scheme.IOB1:
         return iob1_valid_transition(from_label, to_label)
     elif scheme == Scheme.IOB2:
         return iob2_valid_transition(from_label, to_label)
@@ -53,7 +58,9 @@ def is_valid_transition(from_label: Optional[str], to_label: Optional[str], sche
 
 def load_spans(labels: list[str], scheme: LabelingScheme) -> list[TokenSpan]:
     scheme = Scheme(scheme)
-    if scheme == Scheme.IOB1:
+    if scheme == Scheme.IO:
+        return io_to_spans(labels)
+    elif scheme == Scheme.IOB1:
         return iob1_to_spans(labels)
     elif scheme == Scheme.IOB2:
         return iob2_to_spans(labels)
@@ -68,7 +75,9 @@ def load_spans(labels: list[str], scheme: LabelingScheme) -> list[TokenSpan]:
 
 def dump_spans(num_tokens: int, spans: list[TokenSpan], scheme: LabelingScheme) -> list[str]:
     scheme = Scheme(scheme)
-    if scheme == Scheme.IOB1:
+    if scheme == Scheme.IO:
+        return spans_to_io(num_tokens, spans)
+    elif scheme == Scheme.IOB1:
         return spans_to_iob1(num_tokens, spans)
     elif scheme == Scheme.IOB2:
         return spans_to_iob2(num_tokens, spans)
@@ -96,6 +105,9 @@ def parse_label(label: str, sep: str = '-') -> tuple[Optional[str], Optional[str
 
 
 
+def io_valid_label(label: str) -> bool:
+    return label and label[0] in 'IO'
+
 def iob1_valid_label(label: str) -> bool:
     return label and label[0] in 'BIO'
 
@@ -109,6 +121,9 @@ def iobes_valid_label(label: str) -> bool:
     return label and label[0] in 'IOBES'
 
 
+
+def io_valid_transition(from_label: Optional[str], to_label: Optional[str]) -> bool:
+    return from_label is not None or to_label is not None
 
 def iob1_valid_transition(from_label: Optional[str], to_label: Optional[str]) -> bool:
     if from_label is None:
@@ -187,6 +202,31 @@ def iobes_valid_transition(from_label: Optional[str], to_label: Optional[str]) -
     return False
 
 
+
+def io_to_spans(labels: list[str]) -> list[TokenSpan]:
+    spans = []
+    start = span_entity = None
+    previous_label = None
+    for i, label in enumerate(labels):
+        if not io_valid_label(label):
+            raise ValueError(f'invalid {label=}')
+        if not io_valid_transition(previous_label, label):
+            prev = 'START' if previous_label is None else previous_label
+            raise ValueError(f'invalid transition {prev!r} -> {label!r}')
+        tag, entity = parse_label(label)
+        if tag == 'O':
+            if start is not None:
+                spans.append(TokenSpan(start, i, span_entity))
+                start = span_entity = None
+        elif tag == 'I':
+            if entity != span_entity:
+                spans.append(TokenSpan(start, i, span_entity))
+                start = i
+                span_entity = entity
+        previous_label = label
+    if start is not None:
+        spans.append(TokenSpan(start, len(labels), span_entity))
+    return spans
 
 def iob1_to_spans(labels: list[str]) -> list[TokenSpan]:
     spans = []
@@ -304,6 +344,15 @@ def iobes_to_spans(labels: list[str]) -> list[TokenSpan]:
 
 
 
+def spans_to_io(num_tokens: int, spans: list[TokenSpan]) -> list[str]:
+    if Span.any_overlap(spans):
+        raise ValueError('overlapping spans')
+    labels = ['O'] * num_tokens
+    for span in spans:
+        for i in span.range():
+            labels[i] = f'I-{span.label}' if span.label else 'I'
+    return labels
+
 def spans_to_iob1(num_tokens: int, spans: list[TokenSpan]) -> list[str]:
     if Span.any_overlap(spans):
         raise ValueError('overlapping spans')
@@ -366,6 +415,21 @@ def spans_to_iobes(num_tokens: int, spans: list[TokenSpan]) -> list[str]:
 
 
 
+def io_to_iob1(labels: list[str]) -> list[str]:
+    return spans_to_iob1(len(labels), io_to_spans(labels))
+
+def io_to_iob2(labels: list[str]) -> list[str]:
+    return spans_to_iob2(len(labels), io_to_spans(labels))
+
+def io_to_bilou(labels: list[str]) -> list[str]:
+    return spans_to_bilou(len(labels), io_to_spans(labels))
+
+def io_to_iobes(labels: list[str]) -> list[str]:
+    return spans_to_iobes(len(labels), io_to_spans(labels))
+
+def iob1_to_io(labels: list[str]) -> list[str]:
+    return spans_to_io(len(labels), iob1_to_spans(labels))
+
 def iob1_to_iob2(labels: list[str]) -> list[str]:
     return spans_to_iob2(len(labels), iob1_to_spans(labels))
 
@@ -374,6 +438,9 @@ def iob1_to_bilou(labels: list[str]) -> list[str]:
 
 def iob1_to_iobes(labels: list[str]) -> list[str]:
     return spans_to_iobes(len(labels), iob1_to_spans(labels))
+
+def iob2_to_io(labels: list[str]) -> list[str]:
+    return spans_to_io(len(labels), iob2_to_spans(labels))
 
 def iob2_to_iob1(labels: list[str]) -> list[str]:
     return spans_to_iob1(len(labels), iob2_to_spans(labels))
@@ -384,6 +451,9 @@ def iob2_to_bilou(labels: list[str]) -> list[str]:
 def iob2_to_iobes(labels: list[str]) -> list[str]:
     return spans_to_iobes(len(labels), iob2_to_spans(labels))
 
+def bilou_to_io(labels: list[str]) -> list[str]:
+    return spans_to_io(len(labels), bilou_to_spans(labels))
+
 def bilou_to_iob1(labels: list[str]) -> list[str]:
     return spans_to_iob1(len(labels), bilou_to_spans(labels))
 
@@ -392,6 +462,9 @@ def bilou_to_iob2(labels: list[str]) -> list[str]:
 
 def bilou_to_iobes(labels: list[str]) -> list[str]:
     return spans_to_iobes(len(labels), bilou_to_spans(labels))
+
+def iobes_to_io(labels: list[str]) -> list[str]:
+    return spans_to_io(len(labels), iobes_to_spans(labels))
 
 def iobes_to_iob1(labels: list[str]) -> list[str]:
     return spans_to_iob1(len(labels), iobes_to_spans(labels))
