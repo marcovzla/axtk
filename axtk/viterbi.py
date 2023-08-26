@@ -2,27 +2,27 @@ from typing import Optional
 from collections.abc import Sequence
 import torch
 import torch.nn.functional as F
-from axtk.token_labeling import is_valid_transition
+from axtk.token_labeling import LabelingScheme, is_valid_transition
 
 
 LARGE_NUMBER = 100_000
 
 
-def make_start_constraints(labels: dict[int, str], scheme: str) -> torch.Tensor:
+def make_start_constraints(labels: dict[int, str], scheme: LabelingScheme) -> torch.Tensor:
     start_constraints = torch.zeros(len(labels))
     for i, label in labels.items():
         if not is_valid_transition(from_label=None, to_label=label, scheme=scheme):
             start_constraints[i] = -torch.inf
     return start_constraints
 
-def make_end_constraints(labels: dict[int, str], scheme: str) -> torch.Tensor:
+def make_end_constraints(labels: dict[int, str], scheme: LabelingScheme) -> torch.Tensor:
     end_constraints = torch.zeros(len(labels))
     for i, label in labels.items():
         if not is_valid_transition(from_label=label, to_label=None, scheme=scheme):
             end_constraints[i] = -torch.inf
     return end_constraints
 
-def make_transition_constraints(labels: dict[int, str], scheme: str) -> torch.Tensor:
+def make_transition_constraints(labels: dict[int, str], scheme: LabelingScheme) -> torch.Tensor:
     transition_constraints = torch.zeros((len(labels), len(labels)))
     for i, from_label in labels.items():
         for j, to_label in labels.items():
