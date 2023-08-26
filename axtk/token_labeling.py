@@ -11,8 +11,9 @@ class Scheme(str, Enum):
     IOB2 = 'IOB2'
     BILOU = 'BILOU'
     IOBES = 'IOBES'
+    RAW = 'RAW'
 
-LabelingScheme = Union[Scheme, Literal['IO', 'IOB1', 'IOB2', 'BILOU', 'IOBES']]
+LabelingScheme = Union[Scheme, Literal['IO', 'IOB1', 'IOB2', 'BILOU', 'IOBES', 'RAW']]
 
 
 
@@ -34,6 +35,8 @@ def is_valid_label(label: str, scheme: LabelingScheme) -> bool:
         return bilou_valid_label(label)
     elif scheme == Scheme.IOBES:
         return iobes_valid_label(label)
+    elif scheme == Scheme.RAW:
+        return raw_valid_label(label)
     else:
         raise ValueError(f'invalid {scheme=}')
 
@@ -51,6 +54,8 @@ def is_valid_transition(from_label: Optional[str], to_label: Optional[str], sche
         return bilou_valid_transition(from_label, to_label)
     elif scheme == Scheme.IOBES:
         return iobes_valid_transition(from_label, to_label)
+    elif scheme == Scheme.RAW:
+        return raw_valid_transition(from_label, to_label)
     else:
         raise ValueError(f'invalid {scheme=}')
 
@@ -68,6 +73,8 @@ def load_spans(labels: list[str], scheme: LabelingScheme) -> list[TokenSpan]:
         return bilou_to_spans(labels)
     elif scheme == Scheme.IOBES:
         return iobes_to_spans(labels)
+    elif scheme == Scheme.RAW:
+        return raw_to_spans(labels)
     else:
         raise ValueError(f'invalid {scheme=}')
 
@@ -85,6 +92,8 @@ def dump_spans(num_tokens: int, spans: list[TokenSpan], scheme: LabelingScheme) 
         return spans_to_bilou(num_tokens, spans)
     elif scheme == Scheme.IOBES:
         return spans_to_iobes(num_tokens, spans)
+    elif scheme == Scheme.RAW:
+        return spans_to_raw(num_tokens, spans)
     else:
         raise ValueError(f'invalid {scheme=}')
 
@@ -105,6 +114,9 @@ def parse_label(label: str, sep: str = '-') -> tuple[Optional[str], Optional[str
 
 
 
+def raw_valid_label(label: str) -> bool:
+    return bool(label)
+
 def io_valid_label(label: str) -> bool:
     return label and label[0] in 'IO'
 
@@ -121,6 +133,9 @@ def iobes_valid_label(label: str) -> bool:
     return label and label[0] in 'IOBES'
 
 
+
+def raw_valid_transition(from_label: Optional[str], to_label: Optional[str]) -> bool:
+    return from_label is not None or to_label is not None
 
 def io_valid_transition(from_label: Optional[str], to_label: Optional[str]) -> bool:
     return from_label is not None or to_label is not None
@@ -202,6 +217,31 @@ def iobes_valid_transition(from_label: Optional[str], to_label: Optional[str]) -
     return False
 
 
+
+def raw_to_spans(labels: list[str]) -> list[TokenSpan]:
+    spans = []
+    start = span_entity = None
+    previous_label = None
+    for i, label in enumerate(labels):
+        if not raw_valid_label(label):
+            raise ValueError(f'invalid {label=}')
+        if not raw_valid_transition(previous_label, label):
+            prev = 'START' if previous_label is None else previous_label
+            raise ValueError(f'invalid transition {prev!r} -> {label!r}')
+        tag, entity = parse_label(label)
+        if tag == 'O':
+            if start is not None:
+                spans.append(TokenSpan(start, i, span_entity))
+                start = span_entity = None
+        elif tag is None:
+            if entity != span_entity:
+                spans.append(TokenSpan(start, i, span_entity))
+                start = i
+                span_entity = entity
+        previous_label = label
+    if start is not None:
+        spans.append(TokenSpan(start, len(labels), span_entity))
+    return spans
 
 def io_to_spans(labels: list[str]) -> list[TokenSpan]:
     spans = []
@@ -344,6 +384,17 @@ def iobes_to_spans(labels: list[str]) -> list[TokenSpan]:
 
 
 
+def spans_to_raw(num_tokens: int, spans: list[TokenSpan]) -> list[str]:
+    if Span.any_overlap(spans):
+        raise ValueError('overlapping spans')
+    labels = ['O'] * num_tokens
+    for span in spans:
+        if span.label is None:
+            raise ValueError('label missing')
+        for i in span.range():
+            labels[i] = span.label
+    return labels
+
 def spans_to_io(num_tokens: int, spans: list[TokenSpan]) -> list[str]:
     if Span.any_overlap(spans):
         raise ValueError('overlapping spans')
@@ -427,6 +478,9 @@ def io_to_bilou(labels: list[str]) -> list[str]:
 def io_to_iobes(labels: list[str]) -> list[str]:
     return spans_to_iobes(len(labels), io_to_spans(labels))
 
+def io_to_raw(labels: list[str]) -> list[str]:
+    return spans_to_raw(len(labels), io_to_spans(labels))
+
 def iob1_to_io(labels: list[str]) -> list[str]:
     return spans_to_io(len(labels), iob1_to_spans(labels))
 
@@ -438,6 +492,9 @@ def iob1_to_bilou(labels: list[str]) -> list[str]:
 
 def iob1_to_iobes(labels: list[str]) -> list[str]:
     return spans_to_iobes(len(labels), iob1_to_spans(labels))
+
+def iob1_to_raw(labels: list[str]) -> list[str]:
+    return spans_to_raw(len(labels), iob1_to_spans(labels))
 
 def iob2_to_io(labels: list[str]) -> list[str]:
     return spans_to_io(len(labels), iob2_to_spans(labels))
@@ -451,6 +508,9 @@ def iob2_to_bilou(labels: list[str]) -> list[str]:
 def iob2_to_iobes(labels: list[str]) -> list[str]:
     return spans_to_iobes(len(labels), iob2_to_spans(labels))
 
+def iob2_to_raw(labels: list[str]) -> list[str]:
+    return spans_to_raw(len(labels), iob2_to_spans(labels))
+
 def bilou_to_io(labels: list[str]) -> list[str]:
     return spans_to_io(len(labels), bilou_to_spans(labels))
 
@@ -463,6 +523,9 @@ def bilou_to_iob2(labels: list[str]) -> list[str]:
 def bilou_to_iobes(labels: list[str]) -> list[str]:
     return spans_to_iobes(len(labels), bilou_to_spans(labels))
 
+def bilou_to_raw(labels: list[str]) -> list[str]:
+    return spans_to_raw(len(labels), bilou_to_spans(labels))
+
 def iobes_to_io(labels: list[str]) -> list[str]:
     return spans_to_io(len(labels), iobes_to_spans(labels))
 
@@ -474,3 +537,22 @@ def iobes_to_iob2(labels: list[str]) -> list[str]:
 
 def iobes_to_bilou(labels: list[str]) -> list[str]:
     return spans_to_bilou(len(labels), iobes_to_spans(labels))
+
+def iobes_to_raw(labels: list[str]) -> list[str]:
+    return spans_to_raw(len(labels), iobes_to_spans(labels))
+
+def raw_to_io(labels: list[str]) -> list[str]:
+    return spans_to_io(len(labels), raw_to_spans(labels))
+
+def raw_to_iob1(labels: list[str]) -> list[str]:
+    return spans_to_iob1(len(labels), raw_to_spans(labels))
+
+def raw_to_iob2(labels: list[str]) -> list[str]:
+    return spans_to_iob2(len(labels), raw_to_spans(labels))
+
+def raw_to_bilou(labels: list[str]) -> list[str]:
+    return spans_to_bilou(len(labels), raw_to_spans(labels))
+
+def raw_to_iobes(labels: list[str]) -> list[str]:
+    return spans_to_iobes(len(labels), raw_to_spans(labels))
+
