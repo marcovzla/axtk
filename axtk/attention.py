@@ -88,16 +88,16 @@ class ConcatAttention(nn.Module):
 class BiaffineAttention(nn.Module):
     """https://arxiv.org/pdf/1611.01734.pdf"""
 
-    def __init__(self, target_embedding_size: int, source_embedding_size: int):
+    def __init__(self, target_embedding_size: int, source_embedding_size: int, target_hidden_size: int, souce_hidden_size: int):
         super().__init__()
-        self.U = nn.Parameter(torch.empty(target_embedding_size, source_embedding_size))
-        nn.init.xavier_uniform_(self.U)
-        self.W_src = nn.Parameter(torch.empty(source_embedding_size))
+        self.W_src = nn.Parameter(torch.empty(source_embedding_size, souce_hidden_size))
         nn.init.xavier_uniform_(self.W_src)
-        self.W_tgt = nn.Parameter(torch.empty(target_embedding_size))
+        self.W_tgt = nn.Parameter(torch.empty(target_embedding_size, target_hidden_size))
         nn.init.xavier_uniform_(self.W_tgt)
-        self.b = nn.Parameter(torch.empty(1))
-        nn.init.constant_(self.b, 0)
+        self.U = nn.Parameter(torch.empty(target_hidden_size, souce_hidden_size))
+        nn.init.xavier_uniform_(self.U)
+        self.u = nn.Parameter(torch.empty(souce_hidden_size))
+        nn.init.xavier_uniform_(self.u)
 
     def forward(
             self,
@@ -120,8 +120,8 @@ class BiaffineAttention(nn.Module):
         # target_output: (batch_size, target_sequence_length, 1)
         target_output = (target_vectors @ self.W_tgt).unsqueeze(2)
         # output: (batch_size, target_sequence_length, source_sequence_length)
-        output = target_vectors @ self.U @ source_vectors.transpose(1, 2)
-        output = output + source_output + target_output + self.b
+        output = target_output @ self.U @ source_output.transpose(1, 2)
+        output = output + source_output @ self.u
         # apply source_mask
         if source_mask is not None:
             output = output * source_mask.unsqueeze(1)
