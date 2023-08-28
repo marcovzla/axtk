@@ -14,17 +14,29 @@ class GeneralAttention(nn.Module):
 
     def forward(
             self,
-            target_vectors: torch.Tensor,
             source_vectors: torch.Tensor,
+            target_vectors: torch.Tensor,
             source_mask: Optional[torch.Tensor] = None,
+            target_mask: Optional[torch.Tensor] = None,
     ):
-        # target_vectors: (batch_size, target_embedding_size)
-        # source_vectors: (batch_size, sequence_length, source_embedding_size)
-        output = target_vectors @ self.W
-        output = source_vectors @ output.unsqueeze(2)
-        output = output.squeeze()
+        # source_vectors: (batch_size, source_sequence_length, source_embedding_size)
+        # target_vectors: (batch_size, target_embedding_size) or (batch_size, target_sequence_length, target_embedding_size)
+        target_is_single_vector = len(target_vectors.shape) == 2
+        if target_is_single_vector:
+            if target_mask is not None:
+                raise ValueError('target_mask is not valid when target is a single vector')
+            target_vectors = target_vectors.unsqueeze(1)
+        # output: (batch_size, target_sequence_length, source_sequence_length)
+        output = target_vectors @ self.W @ source_vectors.transpose(1, 2)
+        # apply source_mask
         if source_mask is not None:
-            output = output * source_mask
+            output = output * source_mask.unsqueeze(1)
+        # apply target_mask
+        if target_mask is not None:
+            output = output * target_mask.unsqueeze(2)
+        # squeeze target_sequenze_length if target is a single vector
+        if target_is_single_vector:
+            output = output.squeeze(1)
         return output
 
 
