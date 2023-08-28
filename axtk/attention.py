@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class GeneralAttention(nn.Module):
-    """General attention in section 3.1 of https://arxiv.org/pdf/1508.04025.pdf"""
+    """https://arxiv.org/pdf/1508.04025.pdf"""
 
     def __init__(self, target_embedding_size: int, source_embedding_size: int):
         super().__init__()
@@ -41,7 +41,7 @@ class GeneralAttention(nn.Module):
 
 
 class ConcatAttention(nn.Module):
-    """Concat attention in section 3.1 of https://arxiv.org/pdf/1508.04025.pdf"""
+    """https://arxiv.org/pdf/1508.04025.pdf"""
 
     def __init__(self, target_embedding_size: int, source_embedding_size: int, hidden_size: int):
         super().__init__()
