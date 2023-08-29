@@ -28,15 +28,11 @@ class GeneralAttention(nn.Module):
             target_vectors = target_vectors.unsqueeze(1)
         # output: (batch_size, target_sequence_length, source_sequence_length)
         output = target_vectors @ self.W @ source_vectors.transpose(1, 2)
-        # apply source_mask
-        if source_mask is not None:
-            output = output * source_mask.unsqueeze(1)
-        # apply target_mask
-        if target_mask is not None:
-            output = output * target_mask.unsqueeze(2)
+        output = apply_masks(output, source_mask, target_mask)
         # squeeze target_sequenze_length if target is a single vector
         if target_is_single_vector:
             output = output.squeeze(1)
+        # return results
         return output
 
 
@@ -72,16 +68,11 @@ class ConcatAttention(nn.Module):
         concat_vectors = torch.cat([source_vectors, target_vectors], dim=3)
         # output: (batch_size, target_sequence_length, source_sequence_length)
         output = F.tanh(concat_vectors @ self.W) @ self.v
-        output = output.unsqueeze(3)
-        # apply source_mask
-        if source_mask is not None:
-            output = output * source_mask.unsqueeze(1)
-        # apply target_mask
-        if target_mask is not None:
-            output = output * target_mask.unsqueeze(2)
+        output = apply_masks(output, source_mask, target_mask)
         # squeeze target_sequenze_length if target is a single vector
         if target_is_single_vector:
             output = output.squeeze(1)
+        # return results
         return output
 
 
@@ -122,14 +113,29 @@ class BiaffineAttention(nn.Module):
         # output: (batch_size, target_sequence_length, source_sequence_length)
         output = target_output @ self.U @ source_output.transpose(1, 2)
         output = output + source_output @ self.u
-        # apply source_mask
-        if source_mask is not None:
-            output = output * source_mask.unsqueeze(1)
-        # apply target_mask
-        if target_mask is not None:
-            output = output * target_mask.unsqueeze(2)
+        output = apply_masks(output, source_mask, target_mask)
         # squeeze target_sequenze_length if target is a single vector
         if target_is_single_vector:
             output = output.squeeze(1)
         # return results
         return output
+
+
+def apply_masks(
+        scores: torch.Tensor,
+        source_mask: Optional[torch.Tensor],
+        target_mask: Optional[torch.Tensor],
+        masked_value: float = -torch.inf,
+) -> torch.Tensor:
+    # get shape
+    batch_size, target_len, source_len = scores.size()
+    # apply source_mask
+    if source_mask is not None:
+        mask = source_mask.unsqueeze(1).repeat(1, target_len, 1)
+        scores[mask==0] = masked_value
+    # apply target_mask
+    if target_mask is not None:
+        mask = target_mask.unsqueeze(2).repeat(1, 1, source_len)
+        scores[mask==0] = masked_value
+    # return scores
+    return scores
