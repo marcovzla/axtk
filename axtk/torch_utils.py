@@ -72,7 +72,34 @@ def unravel_index(
         shape: tuple[int, ...],
         order: Literal['C', 'F'] = 'C',
 ) -> tuple[torch.Tensor, ...]:
-    """Converts a flat index or array of flat indices into a tuple of coordinate arrays."""
+    """
+    Converts a flat index or array of flat indices into a tuple of coordinate tensors.
+
+    Given a flat index or an array of flat indices and a shape, this function returns a
+    tuple of tensors containing the coordinates that would be needed to index into a
+    multi-dimensional array of the specified shape. The order of unraveling can be either
+    row-major (C) or column-major (F).
+
+    Args:
+        index (int, torch.Tensor, or array-like): A flat index or an array of flat indices.
+        shape (tuple[int, ...]): The shape of the target multi-dimensional array.
+        order (Literal['C', 'F'], optional): The order in which the indices should be
+            unraveled. 'C' stands for row-major (C-style) order, and 'F' stands for
+            column-major (Fortran-style) order. Defaults to 'C'.
+
+    Returns:
+        tuple[torch.Tensor, ...]: A tuple of tensors containing the unraveled indices.
+        Each tensor corresponds to a dimension in the input shape.
+
+    Raises:
+        ValueError: If the provided index or indices are out of bounds for the given shape.
+
+    Example:
+        >>> flat_indices = torch.tensor([8, 12])
+        >>> shape = (3, 4, 5)
+        >>> unravel_indices(flat_indices, shape)
+        (tensor([0, 0]), tensor([1, 2]), tensor([3, 2]))
+    """
     if isinstance(index, torch.Tensor):
         index = index.clone()
     elif not isinstance(index, Number):
@@ -98,16 +125,32 @@ def unravel_index(
     return tuple(unraveled_coords)
 
 
-def make_first_subword_mask(word_ids: list[Optional[int]]) -> torch.BoolTensor:
+def create_first_subword_mask(word_ids: list[Optional[int]]) -> torch.BoolTensor:
     """
     Creates a boolean mask tensor indicating the positions of the first subword token
     corresponding to each word of a sequence, based on the provided list of word_ids.
+
+    Args:
+        word_ids (list[Optional[int]]): A list of word IDs where each element
+            indicates the word corresponding to a token. Special tokens added by the
+            tokenizer are mapped to `None`, while other tokens are mapped to the index
+            of their corresponding word. Several tokens might be mapped to the same
+            word index if they are parts of that word.
+
+    Returns:
+        torch.BoolTensor: A boolean tensor with `True` at positions that correspond
+        to the first subword token within each word, and `False` otherwise.
+
+    Example:
+        >>> word_ids = [None, 0, 1, 1, 2, None]
+        >>> make_first_subword_mask(word_ids)
+        tensor([False,  True,  True, False,  True, False])
     """
     mask = []
     previous_word_id = None
     for word_id in word_ids:
-        is_valid_token = word_id is not None and word_id != previous_word_id
-        mask.append(is_valid_token)
+        is_first_subword = word_id is not None and word_id != previous_word_id
+        mask.append(is_first_subword)
         previous_word_id = word_id
     return torch.tensor(mask)
 
@@ -120,7 +163,33 @@ def defrag(
 ) -> torch.Tensor:
     """
     Rearranges the elements in the input tensor based on the provided mask,
-    while optionally filling empty positions with a specified value.
+    moving elements corresponding to `True` values to the beginning of the tensor,
+    and optionally filling the remaining positions with a specified value.
+
+    This function takes an input tensor and a mask tensor of the same shape. It reorders
+    the elements in the input tensor such that elements corresponding to `True` values
+    in the mask are moved to the beginning of the tensor while maintaining their relative
+    order. If the optional `empty_value` is provided, the remaining positions in the tensor
+    will be filled with the specified value.
+
+    Args:
+        tensor (torch.Tensor): The input tensor to be defragmented.
+        mask (torch.Tensor): A tensor of the same shape as `tensor`, where each `True`
+            value indicates the positions to move to the beginning of the tensor.
+        empty_value (Optional[Any], optional): Value to fill in remaining positions in
+            the tensor. Defaults to None.
+
+    Returns:
+        torch.Tensor: A new tensor containing the rearranged elements from the input
+        tensor based on the mask. Elements corresponding to `True` values in the mask
+        are moved to the beginning, and remaining positions may be filled with the
+        `empty_value` if provided.
+
+    Example:
+        >>> original_tensor = torch.tensor([10, 20, 30, 40, 50])
+        >>> mask = torch.tensor([True, False, True, False, True])
+        >>> defrag(original_tensor, mask, empty_value=0)
+        tensor([10, 30, 50,  0,  0])
     """
     return defrag_(tensor=tensor.clone(), mask=mask, empty_value=empty_value)
 
@@ -132,8 +201,33 @@ def defrag_(
         empty_value: Optional[Any] = None,
 ) -> torch.Tensor:
     """
-    Rearranges the elements in the input tensor based on the provided mask,
-    while optionally filling empty positions with a specified value.
+    Rearranges the elements in the input tensor in place based on the provided mask,
+    moving elements corresponding to `True` values to the beginning of the tensor,
+    and optionally filling the remaining positions with a specified value.
+
+    This function takes an input tensor and a mask tensor of the same shape. It reorders
+    the elements in the input tensor such that elements corresponding to `True` values
+    in the mask are moved to the beginning of the tensor while maintaining their relative
+    order. If the optional `empty_value` is provided, the remaining positions in the tensor
+    will be filled with the specified value.
+
+    Args:
+        tensor (torch.Tensor): The input tensor to be defragmented.
+        mask (torch.Tensor): A tensor of the same shape as `tensor`, where each `True`
+            value indicates the positions to move to the beginning of the tensor.
+        empty_value (Optional[Any], optional): Value to fill in remaining positions in
+            the tensor. Defaults to None.
+
+    Returns:
+        torch.Tensor: The input tensor with rearranged elements based on the mask.
+        Elements corresponding to `True` values in the mask are moved to the beginning,
+        and remaining positions may be filled with the `empty_value` if provided.
+
+    Example:
+        >>> original_tensor = torch.tensor([10, 20, 30, 40, 50])
+        >>> mask = torch.tensor([True, False, True, False, True])
+        >>> defrag_(original_tensor, mask, empty_value=0)
+        tensor([10, 30, 50,  0,  0])
     """
     # only one- and two-dimensional masks are supported
     if len(mask.shape) not in (1, 2):
@@ -161,17 +255,39 @@ def defrag_(
     return tensor
 
 
-def shift_value_range(
+def scale_and_shift_values(
         tensor: torch.Tensor,
         source_range: Optional[tuple[Number, Number]] = None,
         target_range: tuple[Number, Number] = (0, 1),
         clip_values: bool = True,
 ) -> torch.Tensor:
     """
-    Shifts the values of a tensor from source_range to target_range.
-    If target_range is not provided, it defaults to (0, 1).
-    If source_range is not provided, it defaults to the tensor's min and max values.
-    If source_range is provided and clip_values is set to True (default), the tensor's values are clipped.
+    Scales and shifts the values of a tensor to a specified target value range.
+
+    This function takes an input tensor and performs a transformation that scales and shifts
+    its values from a specified source range to a desired target range. If the source range
+    is not provided, the function automatically determines it using the minimum and maximum
+    values of the input tensor. If the `clip_values` flag is set to True (default behavior)
+    and a source range is provided, the tensor's values are clipped to the source range before
+    performing the transformation.
+
+    Args:
+        tensor (torch.Tensor): The input tensor to be transformed.
+        source_range (Optional[tuple[Number, Number]], optional): The source value range
+            from which the tensor's values will be scaled and shifted. Defaults to None.
+        target_range (tuple[Number, Number], optional): The target value range to which
+            the tensor's values will be transformed. Defaults to (0, 1).
+        clip_values (bool, optional): A flag indicating whether to clip the tensor's
+            values to the source range if provided. Defaults to True.
+
+    Returns:
+        torch.Tensor: A new tensor with values scaled and shifted to the target value range.
+
+    Example:
+        >>> input_tensor = torch.tensor([0.1, 0.5, 0.9])
+        >>> scaled_shifted_tensor = scale_and_shift_values(input_tensor, source_range=(0, 1), target_range=(-1, 1))
+        >>> scaled_shifted_tensor
+        tensor([-0.8,  0.0,  0.8])
     """
     tensor = tensor.float()
     if source_range is None:
@@ -180,17 +296,15 @@ def shift_value_range(
     elif clip_values:
         # if source_range was provided and clip_values is true, clip input tensor values
         tensor = tensor.clip(*source_range)
-    # shift from source_range to 0-1 range
-    if source_range != (0, 1):
+    # scale and shift the tensor values to the target range
+    if source_range != target_range:
         from_min, from_max = source_range
+        to_min, to_max = target_range
         tensor -= from_min
         tensor /= from_max - from_min
-    # shift from 0-1 range to target_range
-    if target_range != (0, 1):
-        to_min, to_max = target_range
         tensor *= to_max - to_min
         tensor += to_min
-    # return shifted tensor
+    # return the transformed tensor
     return tensor
 
 
@@ -200,8 +314,35 @@ def slerp(
         t: Union[float, torch.Tensor],
         dim: Optional[bool] = None,
 ):
-    """Spherical linear interpolation."""
-    # https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
+    """
+    Performs Spherical Linear Interpolation (SLERP) between two vectors.
+
+    Given two input vectors `start` and `end`, this function computes the result of
+    Spherical Linear Interpolation (SLERP) based on the interpolation parameter `t`.
+    The optional parameter `dim` specifies the dimension along which the vectors are
+    treated for the interpolation.
+
+    Args:
+        start (torch.Tensor): The starting vector for the interpolation.
+        end (torch.Tensor): The ending vector for the interpolation.
+        t (Union[float, torch.Tensor]): Interpolation parameter ranging between 0 and 1.
+        dim (Optional[int], optional): The dimension along which to interpolate the vectors.
+            If provided, the interpolation will be performed along this dimension.
+            Defaults to None.
+
+    Returns:
+        torch.Tensor: The interpolated vector between `start` and `end` based on the value of `t`.
+
+    Note:
+        - The vectors `start` and `end` are not required to be unit vectors.
+        - This function performs SLERP, which ensures constant angular velocity during
+          the interpolation on the unit hypersphere.
+        - If `dim` is provided, the interpolation is performed along that dimension.
+        - The resulting tensor will have the same shape as the input tensors.
+
+    References:
+        - https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
+    """
     keepdim = dim is not None
     start_norm = start / torch.linalg.vector_norm(start, dim=dim, keepdim=keepdim)
     end_norm = end / torch.linalg.vector_norm(end, dim=dim, keepdim=keepdim)
@@ -221,6 +362,33 @@ def smooth_values(
         dtype: Optional[torch.dtype] = None,
         beta: float = 0.98,
 ) -> torch.Tensor:
+    """
+    Applies exponential moving average smoothing to values along a specified dimension.
+
+    Given an input tensor and a dimension along which to perform smoothing, this function
+    applies exponential moving average smoothing to the values along the specified dimension.
+    The smoothing factor is determined by the parameter `beta`. The result is a tensor with
+    the same shape as the input tensor, containing smoothed values.
+
+    Args:
+        input (torch.Tensor): The input tensor containing values to be smoothed.
+        dim (int, optional): The dimension along which to apply smoothing. Defaults to -1,
+            which indicates the last dimension.
+        dtype (Optional[torch.dtype], optional): The data type for the output tensor.
+            If not provided, the same data type as the input tensor is used.
+        beta (float, optional): The smoothing factor, ranging between 0 and 1. Smaller
+            values make the smoothing respond faster to changes. Defaults to 0.98.
+
+    Returns:
+        torch.Tensor: A tensor with smoothed values along the specified dimension.
+
+    Note:
+        - The smoothed values are computed using exponential moving average.
+        - If `dtype` is not provided, the output tensor will have the same data type
+          as the input tensor.
+        - The `dim` parameter specifies the dimension along which smoothing is applied.
+          If `dim` is -1, smoothing is applied along the last dimension.
+    """
     # if dtype was not provided, use same as input tensor
     if dtype is None:
         dtype = input.dtype
