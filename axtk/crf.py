@@ -108,8 +108,8 @@ class LinearChainCRF(nn.Module):
         mask[labels == self.ignore_index] = False
         # defrag input tensors
         emissions = defrag(emissions, mask)
-        labels = defrag(labels, mask, pad=0)
-        mask = defrag(mask, mask, pad=False)
+        labels = defrag(labels, mask, empty_value=0)
+        mask = defrag(mask, mask, empty_value=False)
         # transitions log-probabilities
         transitions, start_transitions, end_transitions = self.get_transitions()
         # return log-likelihood
@@ -147,7 +147,7 @@ class LinearChainCRF(nn.Module):
             mask = mask.type(torch.bool)
         # defrag input tensors
         emissions = defrag(emissions, mask)
-        mask = defrag(mask, mask, pad=False)
+        mask = defrag(mask, mask, empty_value=False)
         # transitions log-probabilities
         transitions, start_transitions, end_transitions = self.get_transitions(apply_constraints=True)
         # decode labels
