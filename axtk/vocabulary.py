@@ -1,7 +1,7 @@
 from typing import Optional
 from collections.abc import Iterable
 from dataclasses import dataclass
-from axtk.utils import drop_duplicates
+from axtk.utils import deduplicate_preserve_order
 
 
 @dataclass(repr=False)
@@ -11,7 +11,7 @@ class Vocabulary:
 
     @classmethod
     def from_labels(cls, labels: Iterable[str]):
-        labels = drop_duplicates(labels)
+        labels = deduplicate_preserve_order(labels)
         id2label = {i: label for i, label in enumerate(labels)}
         label2id = {label: i for i, label in enumerate(labels)}
         return cls(id2label, label2id)
