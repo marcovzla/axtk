@@ -8,6 +8,7 @@ from typing import Any, Optional, Literal, Union
 import torch
 import numpy as np
 from axtk.utils import is_namedtuple
+from axtk.average import ExponentialMovingAverage
 
 
 def set_seed(seed: int) -> torch.Generator:
@@ -200,3 +201,36 @@ def slerp(
         t0.unsqueeze_(dim=dim)
         t1.unsqueeze_(dim=dim)
     return t0 * start + t1 * end
+
+
+def smooth_values(
+        input: torch.Tensor,
+        dim: int = -1,
+        dtype: Optional[torch.dtype] = None,
+        beta: float = 0.98,
+) -> torch.Tensor:
+    # if dtype was not provided, use same as input tensor
+    if dtype is None:
+        dtype = input.dtype
+    # move smooth dimension to the end
+    smooth_last_dimension = dim == -1 or dim == len(input.size()) - 1
+    if not smooth_last_dimension:
+        input = input.transpose(dim, -1)
+    # get input tensor shape
+    size = input.size()
+    # reshape input tensor into a batch of tensors to smooth
+    input = input.reshape(-1, size[-1])
+    # make output tensor
+    output = torch.empty_like(input, dtype=dtype)
+    # smooth each tensor in reshaped input
+    for i in range(input.size(0)):
+        avg = ExponentialMovingAverage(beta)
+        for j in range(input.size(1)):
+            avg.add(input[i, j])
+            output[i, j] = avg.value
+    # reshape output tensor to original shape
+    output = output.view(size=size)
+    if not smooth_last_dimension:
+        output = output.transpose(dim, -1)
+    # return output
+    return output.contiguous()
