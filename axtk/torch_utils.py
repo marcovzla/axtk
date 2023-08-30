@@ -99,6 +99,10 @@ def unravel_index(
 
 
 def make_first_subword_mask(word_ids: list[Optional[int]]) -> torch.BoolTensor:
+    """
+    Creates a boolean mask tensor indicating the positions of the first subword token
+    corresponding to each word of a sequence, based on the provided list of word_ids.
+    """
     mask = []
     previous_word_id = None
     for word_id in word_ids:
@@ -112,17 +116,25 @@ def defrag(
         tensor: torch.Tensor,
         mask: torch.Tensor,
         *,
-        pad: Optional[Any] = None,
+        empty_value: Optional[Any] = None,
 ) -> torch.Tensor:
-    return defrag_(tensor=tensor.clone(), mask=mask, pad=pad)
+    """
+    Rearranges the elements in the input tensor based on the provided mask,
+    while optionally filling empty positions with a specified value.
+    """
+    return defrag_(tensor=tensor.clone(), mask=mask, empty_value=empty_value)
 
 
 def defrag_(
         tensor: torch.Tensor,
         mask: torch.Tensor,
         *,
-        pad: Optional[Any] = None,
+        empty_value: Optional[Any] = None,
 ) -> torch.Tensor:
+    """
+    Rearranges the elements in the input tensor based on the provided mask,
+    while optionally filling empty positions with a specified value.
+    """
     # only one- and two-dimensional masks are supported
     if len(mask.shape) not in (1, 2):
         raise ValueError('mask must be one- or two-dimensional')
@@ -140,8 +152,8 @@ def defrag_(
     for i in range(mask.shape[0]):
         n = mask[i].sum()
         tensor[i, :n] = tensor[i, mask[i]]
-        if pad is not None:
-            tensor[i, n:] = pad
+        if empty_value is not None:
+            tensor[i, n:] = empty_value
     # revert shape if needed
     if one_dimensional_mask:
         tensor.squeeze_(dim=0)
