@@ -12,12 +12,44 @@ from axtk.average import ExponentialMovingAverage
 
 
 def set_seed(seed: int) -> torch.Generator:
+    """
+    Sets the random number generator seeds for Python, NumPy, and PyTorch.
+
+    This function takes an integer seed value and sets the random number generator seeds
+    for Python's built-in `random` module, NumPy's random module, and PyTorch's random module.
+    The provided seed value ensures reproducibility of random number generation across
+    different libraries and functions.
+
+    Args:
+        seed (int): The seed value to initialize the random number generators.
+
+    Returns:
+        torch.Generator: A PyTorch random number generator with the specified seed.
+    """
     random.seed(seed)
     np.random.seed(seed)
     return torch.manual_seed(seed)
 
 
 def enable_full_determinism(seed: int, warn_only: bool = False):
+    """
+    Enables full determinism in PyTorch operations for reproducible results.
+
+    This function configures various settings within the PyTorch environment to ensure
+    full determinism in computations. By setting a common seed and modifying relevant
+    environment variables, it aims to make PyTorch operations consistent and reproducible.
+    This is especially useful for debugging and achieving consistent results across runs.
+
+    Args:
+        seed (int): The seed value to initialize the random number generators.
+        warn_only (bool, optional): If True, warnings about non-deterministic operations
+            will be displayed, but the operations will not be disabled. Defaults to False.
+
+    Note:
+        - Enabling full determinism might impact performance due to certain optimizations
+          being disabled.
+        - CUDA-based operations and libraries are also configured for determinism.
+    """
     set_seed(seed)
     # https://docs.nvidia.com/cuda/cublas/index.html#results-reproducibility
     os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':16:8'
@@ -41,12 +73,37 @@ def seed_worker(worker_id: int):
 
 
 def get_device(module: torch.nn.Module) -> torch.device:
-    """Returns the device where the (first parameter of) the module is stored."""
+    """
+    Retrieves the device on which a PyTorch module is located.
+
+    This function takes a PyTorch module as input and returns the device on which the module
+    is located by inspecting the device of the first parameter.
+
+    Args:
+        module (torch.nn.Module): The PyTorch module for which to determine the device.
+
+    Returns:
+        torch.device: The device on which the specified module is located.
+    """
     return next(module.parameters()).device
 
 
 def move_to_device(obj: Any, device: str | torch.device):
-    """Searches for tensors in containers and moves them to the specified device."""
+    """
+    Recursively moves tensors within containers to the specified device.
+
+    This function takes an object and moves tensors contained within it to the specified
+    device. It traverses the object recursively, identifying tensors and moving them
+    to the specified device. Containers such as data classes, namedtuples, tuples,
+    sequences, and mappings are also traversed, and their contained tensors are moved.
+
+    Args:
+        obj (Any): The object containing tensors or other containers to be moved.
+        device (str or torch.device): The target device to which tensors will be moved.
+
+    Returns:
+        Any: An object with tensors moved to the specified device.
+    """
     if isinstance(obj, torch.Tensor):
         return obj.to(device)
     elif dataclasses.is_dataclass(obj):
