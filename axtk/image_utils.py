@@ -45,16 +45,16 @@ def to_np_image(obj: Union[ImageLike, PathLike]) -> np.ndarray:
     if isinstance(obj, np.ndarray):
         return obj
     elif Image.isImageType(obj):
-        return F.to_tensor(obj).numpy()
+        return np.asarray(obj)
     elif isinstance(obj, torch.Tensor):
-        return obj.numpy(force=True)
+        return np.asarray(F.to_pil_image(obj))
     elif is_pathlike(obj):
         return read_image(obj, return_type='np')
     else:
         raise TypeError(f'unknown type: {type(obj).__qualname__}')
 
 
-def to_pil_image(obj: Union[ImageLike, PathLike]) -> np.ndarray:
+def to_pil_image(obj: Union[ImageLike, PathLike]) -> Image.Image:
     if Image.isImageType(obj):
         return obj
     elif isinstance(obj, np.ndarray):
