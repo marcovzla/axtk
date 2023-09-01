@@ -1,9 +1,7 @@
 [project]
-name = "axtk"
-dynamic = ["version"]
+name = 'axtk'
+dynamic = ['version']
+dependencies = ['torch', 'torchvision']
 
 [tool.setuptools.dynamic]
-version = {attr = "axtk.VERSION"}
-
-[project.optional-dependencies]
-all = ["torch", "torchvision"]
+version = {attr = 'axtk.version.__version__'}
