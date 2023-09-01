@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional
 from collections.abc import Iterable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import torch
 
 
@@ -12,7 +12,7 @@ def handle_tensor(x: Iterable[int]) -> Iterable[int]:
 
 @dataclass(repr=False)
 class Trie:
-    children: dict[int, Trie] = {}
+    children: dict[int, Trie] = field(default_factory=dict)
     is_end: bool = False
 
     def num_sequences(self) -> int:
