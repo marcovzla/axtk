@@ -63,9 +63,22 @@ def patch_object(
     setattr(obj, f_name, MethodType(f_copy, obj))
 
 
-def patch_dunder(obj: Any, **kwargs: FunctionOrMethod):
+class MonkeyPatchedDunderMethods:
+    pass
+
+
+def has_monkey_patched_dunder_methods(obj: Any) -> bool:
+    return isinstance(obj, MonkeyPatchedDunderMethods)
+
+
+def patch_dunder_methods(obj: Any, **kwargs: FunctionOrMethod):
     cls = type(obj)
-    new_cls = type(f'Patched_{cls.__name__}', (cls,), {})
+    patched_cls = type(f'Patched_{cls.__name__}', (cls, MonkeyPatchedDunderMethods), {})
     for f_name, f in kwargs.items():
-        patch_class(new_cls, f, f_name)
-    obj.__class__ = new_cls
+        patch_class(patched_cls, f, f_name)
+    obj.__class__ = patched_cls
+
+
+def restore_dunder_methods(obj: Any):
+    while has_monkey_patched_dunder_methods(obj):
+        obj.__class__ = obj.__class__.__base__
