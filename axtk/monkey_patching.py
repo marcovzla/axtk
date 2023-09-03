@@ -1,6 +1,9 @@
 from types import FunctionType, MethodType
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from functools import update_wrapper
+
+
+FunctionOrMethod = Union[FunctionType, MethodType]
 
 
 def copy_function(f: FunctionType) -> FunctionType:
@@ -9,9 +12,25 @@ def copy_function(f: FunctionType) -> FunctionType:
     return update_wrapper(f_copy, f)
 
 
+def wrap_method(m: MethodType) -> FunctionType:
+    """Wraps a bound method in a function that can be used for monkeypatching."""
+    def f(obj, *args, **kwargs):
+        return m(obj, *args, **kwargs)
+    return f
+
+
+def copy_or_wrap(f: FunctionOrMethod) -> FunctionType:
+    if isinstance(f, FunctionType):
+        return copy_function(f)
+    elif isinstance(f, MethodType):
+        return wrap_method(f)
+    else:
+        raise TypeError
+
+
 def patch_class(
         cls: type,
-        f: FunctionType,
+        f: FunctionOrMethod,
         f_name: Optional[str] = None,
         as_classmethod: bool = False,
         as_property: bool = False,
@@ -21,7 +40,7 @@ def patch_class(
     if f_name is None:
         f_name = f.__name__
     c_name = cls.__name__
-    f_copy = copy_function(f)
+    f_copy = copy_or_wrap(f)
     f_copy.__qualname__ = f'{c_name}.{f_name}'
     if as_classmethod:
         setattr(cls, f_name, MethodType(f_copy, cls))
@@ -33,18 +52,18 @@ def patch_class(
 
 def patch_object(
         obj: Any,
-        f: FunctionType,
+        f: FunctionOrMethod,
         f_name: Optional[str] = None,
 ):
     if f_name is None:
         f_name = f.__name__
     c_name = type(obj).__name__
-    f_copy = copy_function(f)
+    f_copy = copy_or_wrap(f)
     f_copy.__qualname__ = f'{c_name}.{f_name}'
     setattr(obj, f_name, MethodType(f_copy, obj))
 
 
-def patch_dunder(obj: Any, **kwargs: FunctionType):
+def patch_dunder(obj: Any, **kwargs: FunctionOrMethod):
     cls = type(obj)
     new_cls = type(f'Patched_{cls.__name__}', (cls,), {})
     for f_name, f in kwargs.items():
