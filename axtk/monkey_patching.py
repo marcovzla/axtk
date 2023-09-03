@@ -1,5 +1,5 @@
 from types import FunctionType, MethodType
-from typing import Any
+from typing import Any, Optional
 from functools import update_wrapper
 
 
@@ -9,10 +9,17 @@ def copy_function(f: FunctionType) -> FunctionType:
     return update_wrapper(f_copy, f)
 
 
-def patch_class(cls: type, f: FunctionType, as_classmethod: bool = False, as_property: bool = False):
+def patch_class(
+        cls: type,
+        f: FunctionType,
+        f_name: Optional[str] = None,
+        as_classmethod: bool = False,
+        as_property: bool = False,
+):
     if as_classmethod and as_property:
         raise ValueError('as_classmethod and as_property cannot be both set to true')
-    f_name = f.__name__
+    if f_name is None:
+        f_name = f.__name__
     c_name = cls.__name__
     f_copy = copy_function(f)
     f_copy.__qualname__ = f'{c_name}.{f_name}'
@@ -24,9 +31,22 @@ def patch_class(cls: type, f: FunctionType, as_classmethod: bool = False, as_pro
         setattr(cls, f_name, f_copy)
 
 
-def patch_object(obj: Any, f: FunctionType):
-    f_name = f.__name__
+def patch_object(
+        obj: Any,
+        f: FunctionType,
+        f_name: Optional[str] = None,
+):
+    if f_name is None:
+        f_name = f.__name__
     c_name = type(obj).__name__
     f_copy = copy_function(f)
     f_copy.__qualname__ = f'{c_name}.{f_name}'
     setattr(obj, f_name, MethodType(f_copy, obj))
+
+
+def patch_dunder(obj: Any, **kwargs: FunctionType):
+    cls = type(obj)
+    new_cls = type(f'Patched_{cls.__name__}', (cls,), {})
+    for f_name, f in kwargs.items():
+        patch_class(new_cls, f, f_name)
+    obj.__class__ = new_cls
