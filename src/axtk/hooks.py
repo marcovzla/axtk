@@ -20,20 +20,22 @@ ModulePreBackwardHookCallable = Callable[['ModulePreBackwardHook', Module, Grads
 
 class Hook:
     def __enter__(self):
-        self.register()
+        self.register_hook()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.unregister()
+        self.unregister_hook()
 
     def __del__(self):
-        self.unregister()
+        self.unregister_hook()
 
-    def register(self):
-        raise NotImplementedError
+    def register_hook(self):
+        """Method to be implemented by subclasses for registering the hook."""
+        raise NotImplementedError('Subclasses must implement register_hook method.')
 
-    def unregister(self):
-        raise NotImplementedError
+    def unregister_hook(self):
+        """Method to be implemented by subclasses for unregistering the hook."""
+        raise NotImplementedError('Subclasses must implement unregister_hook method.')
 
 
 class HookManager(Hook):
@@ -47,13 +49,15 @@ class HookManager(Hook):
     def __iter__(self):
         return iter(self.hooks)
 
-    def register(self):
+    def register_hook(self):
+        """Register all hooks managed by this HookManager."""
         for hook in self.hooks:
-            hook.register()
+            hook.register_hook()
 
-    def unregister(self):
+    def unregister_hook(self):
+        """Unregister all hooks managed by this HookManager."""
         for hook in self.hooks:
-            hook.unregister()
+            hook.unregister_hook()
 
 
 class TorchHook(Hook):
@@ -61,7 +65,7 @@ class TorchHook(Hook):
         super().__init__()
         self.handle: Optional[RemovableHandle] = None
 
-    def unregister(self):
+    def unregister_hook(self):
         self.handle.remove()
         self.handle = None
 
@@ -70,31 +74,31 @@ class TensorHook(TorchHook):
     def __init__(
             self,
             tensor: Tensor,
-            hook: TensorHookCallable,
+            hook_function: TensorHookCallable,
     ):
         super().__init__()
         self.tensor = tensor
-        self.hook = partial(hook, self)
+        self.hook_function = hook_function
 
-    def register(self):
-        self.handle = self.tensor.register_hook(self.hook)
+    def register_hook(self):
+        self.handle = self.tensor.register_hook(partial(self.hook_function, self))
 
 
 class ModuleForwardHook(TorchHook):
     def __init__(
             self,
             module: Module,
-            hook: ModuleForwardHookCallable,
+            hook_function: ModuleForwardHookCallable,
             prepend: bool = False,
     ):
         super().__init__()
         self.module = module
-        self.hook = partial(hook, self)
+        self.hook_function = hook_function
         self.prepend = prepend
 
-    def register(self):
+    def register_hook(self):
         self.handle = self.module.register_forward_hook(
-            hook=self.hook,
+            hook=partial(self.hook_function, self),
             prepend=self.prepend,
             with_kwargs=True,
         )
@@ -104,17 +108,17 @@ class ModulePreForwardHook(TorchHook):
     def __init__(
             self,
             module: Module,
-            hook: ModulePreForwardHookCallable,
+            hook_function: ModulePreForwardHookCallable,
             prepend: bool = False,
     ):
         super().__init__()
         self.module = module
-        self.hook = partial(hook, self)
+        self.hook_function = hook_function
         self.prepend = prepend
 
-    def register(self):
+    def register_hook(self):
         self.handle = self.module.register_forward_pre_hook(
-            hook=self.hook,
+            hook=partial(self.hook_function, self),
             prepend=self.prepend,
             with_kwargs=True,
         )
@@ -124,17 +128,17 @@ class ModuleBackwardHook(TorchHook):
     def __init__(
             self,
             module: Module,
-            hook: ModuleBackwardHookCallable,
+            hook_function: ModuleBackwardHookCallable,
             prepend: bool = False,
     ):
         super().__init__()
         self.module = module
-        self.hook = partial(hook, self)
+        self.hook_function = hook_function
         self.prepend = prepend
 
-    def register(self):
+    def register_hook(self):
         self.handle = self.module.register_full_backward_hook(
-            hook=self.hook,
+            hook=partial(self.hook_function, self),
             prepend=self.prepend,
         )
 
@@ -143,16 +147,16 @@ class ModulePreBackwardHook(TorchHook):
     def __init__(
             self,
             module: Module,
-            hook: ModulePreBackwardHookCallable,
+            hook_function: ModulePreBackwardHookCallable,
             prepend: bool = False,
     ):
         super().__init__()
         self.module = module
-        self.hook = partial(hook, self)
+        self.hook_function = hook_function
         self.prepend = prepend
 
-    def register(self):
+    def register_hook(self):
         self.handle = self.module.register_full_backward_pre_hook(
-            hook=self.hook,
+            hook=partial(self.hook_function, self),
             prepend=self.prepend,
         )
