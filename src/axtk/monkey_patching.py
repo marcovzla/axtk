@@ -67,7 +67,7 @@ class MonkeyPatchedDunderMethods:
     pass
 
 
-def has_monkey_patched_dunder_methods(obj: Any) -> bool:
+def has_patched_dunder_methods(obj: Any) -> bool:
     return isinstance(obj, MonkeyPatchedDunderMethods)
 
 
@@ -80,5 +80,5 @@ def patch_dunder_methods(obj: Any, **kwargs: FunctionOrMethod):
 
 
 def restore_dunder_methods(obj: Any):
-    while has_monkey_patched_dunder_methods(obj):
+    while has_patched_dunder_methods(obj):
         obj.__class__ = obj.__class__.__base__
