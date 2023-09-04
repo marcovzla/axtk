@@ -24,7 +24,7 @@ def make_end_constraints(id2label: dict[int, str], scheme: LabelingScheme) -> to
     return end_constraints
 
 def make_transition_constraints(id2label: dict[int, str], scheme: LabelingScheme) -> torch.Tensor:
-    transition_constraints = torch.zeros((len(id2label), len(id2label)))
+    transition_constraints = torch.zeros(len(id2label), len(id2label))
     for i, from_label in id2label.items():
         for j, to_label in id2label.items():
             if not is_valid_transition(from_label=from_label, to_label=to_label, scheme=scheme):
@@ -60,7 +60,7 @@ def batch_decode(
         batch_label_ids.append(label_ids)
         batch_scores.append(scores)
     # return decoded labels
-    return torch.concat(batch_label_ids), torch.concat(batch_scores)
+    return torch.cat(batch_label_ids), torch.cat(batch_scores)
 
 
 def decode(
