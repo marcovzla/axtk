@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from collections.abc import Sequence
 import torch
 import torch.nn.functional as F
@@ -92,34 +92,12 @@ def decode(
 
     if has_start_end_restrictions:
         # ensure we have both tensors
-        if start_transitions is None:
-            start_transitions = torch.zeros(num_labels, device=device)
-        if end_transitions is None:
-            end_transitions = torch.zeros(num_labels, device=device)
-        # validate tensor shapes
-        expected_shape = (num_labels,)
-        if start_transitions.shape != expected_shape:
-            raise ValueError(f'start_transitions: expected shape {expected_shape}, found {start_transitions.shape}')
-        if end_transitions.shape != expected_shape:
-            raise ValueError(f'end_transitions: expected shape {expected_shape}, found {end_transitions.shape}')
-        # add two new labels for START and END
-        num_labels += 2
-        start = num_labels - 2
-        end = num_labels - 1
-        # expand transition matrix with two new labels
-        transition_matrix = F.pad(transition_matrix, (0, 2, 0, 2))
-        # add transitions between START and END (impossible)
-        start_transitions = F.pad(start_transitions, (0, 2), value=-torch.inf)
-        end_transitions = F.pad(end_transitions, (0, 2), value=-torch.inf)
-        # transitions from START to other labels
-        transition_matrix[start, :] = start_transitions
-        # transitions from END to other labels (impossible)
-        transition_matrix[end, :] = -torch.inf
-        # transitions from other labels to START (impossible)
-        transition_matrix[:, start] = -torch.inf
-        # transitions from other labels to END
-        transition_matrix[:, end] = end_transitions
+        start_transitions = ensure_transitions(start_transitions, num_labels).to(device)
+        end_transitions = ensure_transitions(end_transitions, num_labels).to(device)
+        # merge start and end transitions with transition matrix
+        transition_matrix = merge_transitions(transition_matrix, start_transitions, end_transitions)
         # add START and END to observations
+        start, end = num_labels, num_labels + 1
         observations = [start] + observations + [end]
         # add START and END to label distributions (impossible)
         emissions = F.pad(emissions, (0, 2), value=-torch.inf)
@@ -140,6 +118,38 @@ def decode(
 
     # return results
     return viterbi_paths, viterbi_scores
+
+
+def ensure_transitions(
+        transitions: Optional[torch.Tensor],
+        shape: Union[int, tuple[int], tuple[int, int]],
+) -> torch.Tensor:
+    if isinstance(shape, int):
+        shape = (shape,)
+    if transitions is None:
+        transitions = torch.zeros(shape)
+    elif transitions.shape != shape:
+        raise ValueError(f'expected shape {shape}, found {transitions.shape}')
+    return transitions
+
+
+def merge_transitions(
+        transition_matrix: torch.FloatTensor,
+        start_transitions: torch.FloatTensor,
+        end_transitions: torch.FloatTensor,
+) -> torch.FloatTensor:
+    # pad transitions
+    transition_matrix = F.pad(transition_matrix, (0, 2, 0, 2))
+    start_transitions = F.pad(start_transitions, (0, 2), value=-torch.inf)
+    end_transitions = F.pad(end_transitions, (0, 2), value=-torch.inf)
+    # add start and end transitions to transition matrix
+    start, end = -2, -1
+    transition_matrix[start, :] = start_transitions
+    transition_matrix[end, :] = -torch.inf
+    transition_matrix[:, start] = -torch.inf
+    transition_matrix[:, end] = end_transitions
+    # return transition matrix
+    return transition_matrix
 
 
 def viterbi_algorithm(

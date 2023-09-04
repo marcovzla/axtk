@@ -18,39 +18,23 @@ class LinearChainCRF(nn.Module):
         super().__init__()
         self.num_labels = num_labels + 2
         self.ignore_index = ignore_index
-        # start-of-sequence and end-of-sequence
+        # define start and end label indices
         self.start = self.num_labels - 2
         self.end = self.num_labels - 1
-        # trainable parameters
+        # initialize trainable transition matrix
         self.transition_matrix = nn.Parameter(torch.empty(self.num_labels, self.num_labels))
         nn.init.xavier_normal_(self.transition_matrix)
-        # ensure constraints
-        if transition_constraints is None:
-            transition_constraints = torch.zeros(num_labels, num_labels)
-        elif transition_constraints.shape != (num_labels, num_labels):
-            raise ValueError('invalid transition_constraints')
-        if start_constraints is None:
-            start_constraints = torch.zeros(num_labels)
-        elif start_constraints.shape != (num_labels,):
-            raise ValueError('invalid start_constraints')
-        if end_constraints is None:
-            end_constraints = torch.zeros(num_labels)
-        elif end_constraints.shape != (num_labels,):
-            raise ValueError('invalid end_constraints')
+        # ensure constraints are provided and in the correct shape
+        transition_constraints = viterbi.ensure_transitions(transition_constraints, (num_labels, num_labels))
+        start_constraints = viterbi.ensure_transitions(start_constraints, num_labels)
+        end_constraints = viterbi.ensure_transitions(end_constraints, num_labels)
         # merge constraints
-        transition_constraints = F.pad(transition_constraints, (0, 2, 0, 2))
-        # add transitions between START and END (impossible)
-        start_constraints = F.pad(start_constraints, (0, 2), value=-torch.inf)
-        end_constraints = F.pad(end_constraints, (0, 2), value=-torch.inf)
-        # transitions from START to other labels
-        transition_constraints[self.start, :] = start_constraints
-        # transitions from END to other labels (impossible)
-        transition_constraints[self.end, :] = -torch.inf
-        # transitions from other labels to START (impossible)
-        transition_constraints[:, self.start] = -torch.inf
-        # transitions from other labels to END
-        transition_constraints[:, self.end] = end_constraints
-        # store constraints
+        transition_constraints = viterbi.merge_transitions(
+            transition_matrix=transition_constraints,
+            start_transitions=start_constraints,
+            end_transitions=end_constraints,
+        )
+        # store constraints in buffer
         self.register_buffer('transition_constraints', transition_constraints)
 
     def get_transitions(self, apply_constraints: bool = False):
