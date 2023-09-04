@@ -6,6 +6,7 @@ from axtk.token_labeling import LabelingScheme, is_valid_transition
 
 
 LARGE_NUMBER = 100_000
+MISSING_OBSERVATION = -1
 
 
 def make_start_constraints(id2label: dict[int, str], scheme: LabelingScheme) -> torch.Tensor:
@@ -85,7 +86,7 @@ def decode(
             if observation >= num_labels:
                 raise ValueError(f'invalid observation at position {i}')
     else:
-        observations = [-1] * sequence_length
+        observations = [MISSING_OBSERVATION] * sequence_length
 
     has_start_end_restrictions = start_transitions is not None or end_transitions is not None
 
@@ -155,7 +156,7 @@ def viterbi_algorithm(
     path_scores, path_labels = [], []
 
     # first observation or first tag distribution
-    if observations[0] < 0:
+    if observations[0] == MISSING_OBSERVATION:
         path_scores.append(emissions[0].unsqueeze(0))
     else:
         one_hot = torch.zeros(1, num_labels, device=device)
@@ -173,7 +174,7 @@ def viterbi_algorithm(
         k = min(new_scores.shape[0], top_k)
         scores, labels = torch.topk(new_scores, k=k, dim=0)
         # store scores for current step
-        if observations[i] < 0:
+        if observations[i] == MISSING_OBSERVATION:
             path_scores.append(emissions[i] + scores)
         else:
             one_hot = torch.zeros(1, num_labels, device=device)
