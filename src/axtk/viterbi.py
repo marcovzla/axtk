@@ -139,15 +139,12 @@ def merge_transitions(
         end_transitions: torch.FloatTensor,
 ) -> torch.FloatTensor:
     # pad transitions
-    transition_matrix = F.pad(transition_matrix, (0, 2, 0, 2))
+    transition_matrix = F.pad(transition_matrix, (0, 2, 0, 2), value=-torch.inf)
     start_transitions = F.pad(start_transitions, (0, 2), value=-torch.inf)
     end_transitions = F.pad(end_transitions, (0, 2), value=-torch.inf)
     # add start and end transitions to transition matrix
-    start, end = -2, -1
-    transition_matrix[start, :] = start_transitions
-    transition_matrix[end, :] = -torch.inf
-    transition_matrix[:, start] = -torch.inf
-    transition_matrix[:, end] = end_transitions
+    transition_matrix[-2, :] = start_transitions
+    transition_matrix[:, -1] = end_transitions
     # return transition matrix
     return transition_matrix
 
