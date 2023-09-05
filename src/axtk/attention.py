@@ -127,15 +127,23 @@ def apply_masks(
         target_mask: Optional[torch.Tensor],
         masked_value: float = -torch.inf,
 ) -> torch.Tensor:
-    # get shape
-    batch_size, target_len, source_len = scores.size()
-    # apply source_mask
+    """
+    Apply masks to attention scores.
+
+    Args:
+        scores (torch.Tensor): Attention scores of shape (batch_size, target_sequence_length, source_sequence_length).
+        source_mask (Optional[torch.Tensor]): Optional source mask of shape (batch_size, source_sequence_length).
+        target_mask (Optional[torch.Tensor]): Optional target mask of shape (batch_size, target_sequence_length).
+        masked_value (float): The value to replace attention scores when masked. Defaults to negative infinity.
+
+    Returns:
+        torch.Tensor: Masked attention scores, where scores are preserved if mask is True and replaced with
+        the specified masked_value if mask is False.
+    """
     if source_mask is not None:
-        mask = source_mask.unsqueeze(1).repeat(1, target_len, 1)
-        scores[mask==0] = masked_value
-    # apply target_mask
+        scores = scores.masked_fill(~source_mask.unsqueeze(1), masked_value)
+
     if target_mask is not None:
-        mask = target_mask.unsqueeze(2).repeat(1, 1, source_len)
-        scores[mask==0] = masked_value
-    # return scores
+        scores = scores.masked_fill(~target_mask.unsqueeze(2), masked_value)
+
     return scores
