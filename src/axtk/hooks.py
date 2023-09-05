@@ -1,6 +1,5 @@
 from typing import Any, Optional
 from collections.abc import Callable, Iterable
-from functools import partial
 from torch import Tensor
 from torch.nn import Module
 from torch.utils.hooks import RemovableHandle
@@ -13,7 +12,7 @@ Grads = tuple[Optional[Tensor], ...]
 TensorHookCallable = Callable[['TensorHook', Tensor], Optional[Tensor]]
 
 ModuleForwardHookCallable = Callable[['ModuleForwardHook', Module, Args, KwArgs, Any], Optional[Any]]
-ModulePreForwardHookCallable = Callable[['ModulePreForwardHook', Module, Args, KwArgs], Optional[tuple[Args, KwArgs]]]
+ModulePreForwardHookCallable = Callable[['ModulePreForwardHook', Module, Args, KwArgs], Optional[tuple[Any, KwArgs]]]
 ModuleBackwardHookCallable = Callable[['ModuleBackwardHook', Module, Grads, Grads], Optional[Grads]]
 ModulePreBackwardHookCallable = Callable[['ModulePreBackwardHook', Module, Grads], Optional[Tensor]]
 
@@ -74,31 +73,42 @@ class TensorHook(TorchHook):
     def __init__(
             self,
             tensor: Tensor,
-            hook_function: TensorHookCallable,
+            hook_function: Optional[TensorHookCallable] = None,
     ):
         super().__init__()
         self.tensor = tensor
-        self.hook_function = hook_function
+        self._hook_function = hook_function
+
+    def hook_function(self, tensor: Tensor) -> Optional[Tensor]:
+        if self._hook_function is None:
+            raise NotImplementedError
+        return self._hook_function(self, tensor)
 
     def register_hook(self):
-        self.handle = self.tensor.register_hook(partial(self.hook_function, self))
+        self.handle = self.tensor.register_hook(self.hook_function)
+
 
 
 class ModuleForwardHook(TorchHook):
     def __init__(
             self,
             module: Module,
-            hook_function: ModuleForwardHookCallable,
+            hook_function: Optional[ModuleForwardHookCallable] = None,
             prepend: bool = False,
     ):
         super().__init__()
         self.module = module
-        self.hook_function = hook_function
+        self._hook_function = hook_function
         self.prepend = prepend
+
+    def hook_function(self, module: Module, args: Args, kwargs: KwArgs, output: Any) -> Optional[Any]:
+        if self._hook_function is None:
+            raise NotImplementedError
+        return self._hook_function(self, module, args, kwargs, output)
 
     def register_hook(self):
         self.handle = self.module.register_forward_hook(
-            hook=partial(self.hook_function, self),
+            hook=self.hook_function,
             prepend=self.prepend,
             with_kwargs=True,
         )
@@ -108,17 +118,22 @@ class ModulePreForwardHook(TorchHook):
     def __init__(
             self,
             module: Module,
-            hook_function: ModulePreForwardHookCallable,
+            hook_function: Optional[ModulePreForwardHookCallable] = None,
             prepend: bool = False,
     ):
         super().__init__()
         self.module = module
-        self.hook_function = hook_function
+        self._hook_function = hook_function
         self.prepend = prepend
+
+    def hook_function(self, module: Module, args: Args, kwargs: KwArgs) -> Optional[tuple[Any, KwArgs]]:
+        if self._hook_function is None:
+            raise NotImplementedError
+        return self._hook_function(self, module, args, kwargs)
 
     def register_hook(self):
         self.handle = self.module.register_forward_pre_hook(
-            hook=partial(self.hook_function, self),
+            hook=self.hook_function,
             prepend=self.prepend,
             with_kwargs=True,
         )
@@ -128,17 +143,22 @@ class ModuleBackwardHook(TorchHook):
     def __init__(
             self,
             module: Module,
-            hook_function: ModuleBackwardHookCallable,
+            hook_function: Optional[ModuleBackwardHookCallable] = None,
             prepend: bool = False,
     ):
         super().__init__()
         self.module = module
-        self.hook_function = hook_function
+        self._hook_function = hook_function
         self.prepend = prepend
+
+    def hook_function(self, module: Module, grad_input: Grads, grad_output: Grads) -> Optional[Grads]:
+        if self._hook_function is None:
+            raise NotImplementedError
+        return self._hook_function(self, module, grad_input, grad_output)
 
     def register_hook(self):
         self.handle = self.module.register_full_backward_hook(
-            hook=partial(self.hook_function, self),
+            hook=self.hook_function,
             prepend=self.prepend,
         )
 
@@ -147,16 +167,21 @@ class ModulePreBackwardHook(TorchHook):
     def __init__(
             self,
             module: Module,
-            hook_function: ModulePreBackwardHookCallable,
+            hook_function: Optional[ModulePreBackwardHookCallable] = None,
             prepend: bool = False,
     ):
         super().__init__()
         self.module = module
-        self.hook_function = hook_function
+        self._hook_function = hook_function
         self.prepend = prepend
+
+    def hook_function(self, module: Module, grad_output: Grads) -> Optional[Tensor]:
+        if self._hook_function is None:
+            raise NotImplementedError
+        return self._hook_function(self, module, grad_output)
 
     def register_hook(self):
         self.handle = self.module.register_full_backward_pre_hook(
-            hook=partial(self.hook_function, self),
+            hook=self.hook_function,
             prepend=self.prepend,
         )
