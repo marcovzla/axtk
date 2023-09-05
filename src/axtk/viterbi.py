@@ -2,34 +2,10 @@ from typing import Optional, Union
 from collections.abc import Sequence
 import torch
 import torch.nn.functional as F
-from axtk.token_labeling import LabelingScheme, is_valid_transition
 
 
 LARGE_NUMBER = 100_000
 MISSING_OBSERVATION = -1
-
-
-def make_start_constraints(id2label: dict[int, str], scheme: LabelingScheme) -> torch.Tensor:
-    start_constraints = torch.zeros(len(id2label))
-    for i, label in id2label.items():
-        if not is_valid_transition(from_label=None, to_label=label, scheme=scheme):
-            start_constraints[i] = -torch.inf
-    return start_constraints
-
-def make_end_constraints(id2label: dict[int, str], scheme: LabelingScheme) -> torch.Tensor:
-    end_constraints = torch.zeros(len(id2label))
-    for i, label in id2label.items():
-        if not is_valid_transition(from_label=label, to_label=None, scheme=scheme):
-            end_constraints[i] = -torch.inf
-    return end_constraints
-
-def make_transition_constraints(id2label: dict[int, str], scheme: LabelingScheme) -> torch.Tensor:
-    transition_constraints = torch.zeros(len(id2label), len(id2label))
-    for i, from_label in id2label.items():
-        for j, to_label in id2label.items():
-            if not is_valid_transition(from_label=from_label, to_label=to_label, scheme=scheme):
-                transition_constraints[i, j] = -torch.inf
-    return transition_constraints
 
 
 def batch_decode(

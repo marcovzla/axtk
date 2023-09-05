@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, Union, Literal
 from enum import Enum
+import torch
 from axtk.span import Span
 
 
@@ -556,3 +557,47 @@ def raw_to_bilou(labels: list[str]) -> list[str]:
 def raw_to_iobes(labels: list[str]) -> list[str]:
     return spans_to_iobes(len(labels), raw_to_spans(labels))
 
+
+
+def make_start_constraints(
+        id2label: dict[int, str],
+        scheme: LabelingScheme,
+        invalid: float = -torch.inf,
+) -> torch.Tensor:
+    num_labels = len(id2label)
+    start_constraints = torch.zeros(num_labels)
+
+    for i, label in id2label.items():
+        if not is_valid_transition(from_label=None, to_label=label, scheme=scheme):
+            start_constraints[i] = invalid
+
+    return start_constraints
+
+def make_end_constraints(
+        id2label: dict[int, str],
+        scheme: LabelingScheme,
+        invalid: float = -torch.inf,
+) -> torch.Tensor:
+    num_labels = len(id2label)
+    end_constraints = torch.zeros(num_labels)
+
+    for i, label in id2label.items():
+        if not is_valid_transition(from_label=label, to_label=None, scheme=scheme):
+            end_constraints[i] = invalid
+
+    return end_constraints
+
+def make_transition_constraints(
+        id2label: dict[int, str],
+        scheme: LabelingScheme,
+        invalid: float = -torch.inf,
+) -> torch.Tensor:
+    num_labels = len(id2label)
+    transition_constraints = torch.zeros(num_labels, num_labels)
+
+    for i, from_label in id2label.items():
+        for j, to_label in id2label.items():
+            if not is_valid_transition(from_label=from_label, to_label=to_label, scheme=scheme):
+                transition_constraints[i, j] = invalid
+
+    return transition_constraints
