@@ -124,12 +124,31 @@ def ensure_transitions(
         transitions: Optional[torch.Tensor],
         shape: Union[int, tuple[int], tuple[int, int]],
 ) -> torch.Tensor:
+    """
+    Ensure that the provided transition tensor has the specified shape or create a new one if None.
+
+    This function checks if the given transitions tensor has the desired shape. If it's None,
+    it creates a new tensor of the specified shape filled with zeros.
+
+    Parameters:
+        transitions (Optional[torch.Tensor]): The input transition tensor to be checked.
+            If None, a new tensor is created.
+        shape (Union[int, tuple[int], tuple[int, int]]): The desired shape for the transition tensor.
+            If an int is provided, a 1D tensor of that length is created. If a tuple is provided,
+            it should represent the desired shape, either for a 1D or 2D tensor.
+
+    Returns:
+        torch.Tensor: The transitions tensor with the specified shape.
+
+    Raises:
+        ValueError: If the provided transitions tensor does not match the desired shape.
+    """
     if isinstance(shape, int):
         shape = (shape,)
     if transitions is None:
         transitions = torch.zeros(shape)
     elif transitions.shape != shape:
-        raise ValueError(f'expected shape {shape}, found {transitions.shape}')
+        raise ValueError(f'Expected shape {shape}, found {transitions.shape}')
     return transitions
 
 
@@ -139,14 +158,32 @@ def merge_transitions(
         end_transitions: torch.FloatTensor,
         invalid: float = -torch.inf,
 ) -> torch.FloatTensor:
-    # pad transitions
+    """
+    Merge transition matrices with start and end transitions.
+
+    This function takes a transition_matrix, start_transitions, and end_transitions, and
+    merges them by adding start and end transitions to the transition_matrix.
+
+    Parameters:
+        transition_matrix (torch.FloatTensor): The original transition matrix.
+        start_transitions (torch.FloatTensor): Transition probabilities from the start state.
+        end_transitions (torch.FloatTensor): Transition probabilities to the end state.
+        invalid (float, optional): Value to pad the matrices with. Default is -inf.
+
+    Returns:
+        torch.FloatTensor: The merged transition matrix with start and end transitions added.
+    """
+
+    # pad the transition_matrix, start_transitions, and end_transitions with invalid values
     transition_matrix = F.pad(transition_matrix, (0, 2, 0, 2), value=invalid)
     start_transitions = F.pad(start_transitions, (0, 2), value=invalid)
     end_transitions = F.pad(end_transitions, (0, 2), value=invalid)
-    # add start and end transitions to transition matrix
+
+    # add start and end transitions to the transition matrix
     transition_matrix[-2, :] = start_transitions
     transition_matrix[:, -1] = end_transitions
-    # return transition matrix
+
+    # return the merged transition matrix
     return transition_matrix
 
 
