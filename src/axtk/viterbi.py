@@ -137,11 +137,12 @@ def merge_transitions(
         transition_matrix: torch.FloatTensor,
         start_transitions: torch.FloatTensor,
         end_transitions: torch.FloatTensor,
+        invalid: float = -torch.inf,
 ) -> torch.FloatTensor:
     # pad transitions
-    transition_matrix = F.pad(transition_matrix, (0, 2, 0, 2), value=-torch.inf)
-    start_transitions = F.pad(start_transitions, (0, 2), value=-torch.inf)
-    end_transitions = F.pad(end_transitions, (0, 2), value=-torch.inf)
+    transition_matrix = F.pad(transition_matrix, (0, 2, 0, 2), value=invalid)
+    start_transitions = F.pad(start_transitions, (0, 2), value=invalid)
+    end_transitions = F.pad(end_transitions, (0, 2), value=invalid)
     # add start and end transitions to transition matrix
     transition_matrix[-2, :] = start_transitions
     transition_matrix[:, -1] = end_transitions
