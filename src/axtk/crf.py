@@ -153,9 +153,22 @@ def log_likelihoods(
         labels: torch.LongTensor,
         mask: torch.BoolTensor,
 ) -> torch.Tensor:
-    """Computes the log-likelihood for each sequence of emissions and their corresponding labels."""
-    # compute numerator
-    scores = compute_scores(
+    """
+    Computes the log-likelihood for each sequence of emissions and their corresponding labels.
+
+    Args:
+        transitions (torch.Tensor): Transition scores between labels.
+        start_transitions (torch.Tensor): Transition scores from the start to the first label.
+        end_transitions (torch.Tensor): Transition scores from the last label to the end.
+        emissions (torch.Tensor): Emission scores for each label and time step.
+        labels (torch.LongTensor): The true labels for each time step in the batch.
+        mask (torch.BoolTensor): A binary mask indicating valid time steps in the sequence.
+
+    Returns:
+        torch.Tensor: The log-likelihoods for the given batch.
+    """
+    # compute the numerator (log scores)
+    log_scores = compute_scores(
         transitions=transitions,
         start_transitions=start_transitions,
         end_transitions=end_transitions,
@@ -163,16 +176,20 @@ def log_likelihoods(
         labels=labels,
         mask=mask,
     )
-    # compute denominator
-    partitions = compute_partitions(
+
+    # compute the denominator (log partition)
+    log_partitions = compute_partitions(
         transitions=transitions,
         start_transitions=start_transitions,
         end_transitions=end_transitions,
         emissions=emissions,
         mask=mask,
     )
-    # return log-likelihoods
-    return scores - partitions
+
+    # calculate log-likelihoods as the difference between log scores and log partitions
+    log_likelihoods = log_scores - log_partitions
+
+    return log_likelihoods
 
 
 def compute_scores(
@@ -183,28 +200,41 @@ def compute_scores(
         labels: torch.LongTensor,
         mask: torch.BoolTensor,
 ) -> torch.Tensor:
-    """Computes the scores for a given batch of emissions and their corresponding labels."""
+    """
+    Computes the scores for a given batch of emissions and their corresponding labels.
+
+    Args:
+        transitions (torch.Tensor): Transition scores between labels. Shape (num_labels, num_labels).
+        start_transitions (torch.Tensor): Start transition scores for each label. Shape (num_labels,).
+        end_transitions (torch.Tensor): End transition scores for each label. Shape (num_labels,).
+        emissions (torch.Tensor): Emission scores for each label in each sequence. Shape (batch_size, sequence_length, num_labels).
+        labels (torch.LongTensor): The label sequences for each batch. Shape (batch_size, sequence_length).
+        mask (torch.BoolTensor): Mask indicating valid time steps in each sequence. Shape (batch_size, sequence_length).
+
+    Returns:
+        torch.Tensor: The scores for the given emissions and labels. Shape (batch_size,).
+    """
     batch_size, sequence_length, num_labels = emissions.shape
-    # compute transition and emmission scores for first labels in batch
+
+    # initialize scores with the start transition and emission scores for the first labels
     first_labels = labels[:, 0]
     t_scores = start_transitions[first_labels]
     e_scores = emissions[:, 0].gather(1, first_labels.unsqueeze(1)).squeeze(1)
-    # store current scores
     scores = t_scores + e_scores
+
     # accumulate scores for remaining labels
     for i in range(sequence_length):
         previous_labels = labels[:, i-1]
         current_labels = labels[:, i]
-        # compute transition and emission scores
         t_scores = transitions[previous_labels, current_labels]
         e_scores = emissions[:, i].gather(1, current_labels.unsqueeze(1)).squeeze(1)
-        # accumulate scores
         scores += mask[:, i] * (t_scores + e_scores)
+
     # add transition score from last label to END
     last_label_indices = mask.sum(1) - 1
     last_labels = labels.gather(1, last_label_indices.unsqueeze(1)).squeeze(1)
     scores += end_transitions[last_labels]
-    # return score
+
     return scores
 
 
@@ -215,12 +245,28 @@ def compute_partitions(
         emissions: torch.Tensor,
         mask: torch.BoolTensor,
 ) -> torch.Tensor:
-    """Computes the partition function for each batch element using the forward-algorithm."""
-    # see https://www.youtube.com/watch?v=fGdXkVv1qNQ
+    """
+    Computes the partition function for each batch element using the forward algorithm.
+
+    Args:
+        transitions (torch.Tensor): Transition scores between labels. Shape (num_labels, num_labels).
+        start_transitions (torch.Tensor): Start transition scores for each label. Shape (num_labels,).
+        end_transitions (torch.Tensor): End transition scores for each label. Shape (num_labels,).
+        emissions (torch.Tensor): Emission scores for each label in each sequence. Shape (batch_size, sequence_length, num_labels).
+        mask (torch.BoolTensor): Mask indicating valid time steps in each sequence. Shape (batch_size, sequence_length).
+
+    Returns:
+        torch.Tensor: The partition function values for each batch element. Shape (batch_size,).
+
+    References:
+        - https://www.youtube.com/watch?v=fGdXkVv1qNQ
+    """
     batch_size, sequence_length, num_labels = emissions.shape
-    # alphas shape (batch_size, num_labels)
-    alphas = start_transitions.unsqueeze(0) + emissions[:, 0]
-    # accumulate alphas from left to right
+
+    # initialize alphas with start transition scores and emissions for the first time step
+    alphas = start_transitions + emissions[:, 0]
+
+    # compute alphas iteratively for each time step in the sequence
     for i in range(1, sequence_length):
         next_alphas = torch.logsumexp(
             # broadcast transition scores over batch dimension
@@ -232,10 +278,15 @@ def compute_partitions(
             # logsumexp over previous_label dimension
             dim=1,
         )
-        # only update alphas if mask is true
+
+        # apply mask to update alphas only when the mask is true
         step_mask = mask[:, i].unsqueeze(1)
         alphas = step_mask * next_alphas + ~step_mask * alphas
+
     # add transition scores to END
-    alphas += end_transitions.unsqueeze(0)
-    # return partition values
-    return torch.logsumexp(alphas, dim=1)
+    alphas += end_transitions
+
+    # compute the partition function by summing over alphas for each batch element
+    partition_function = torch.logsumexp(alphas, dim=1)
+
+    return partition_function
