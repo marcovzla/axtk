@@ -106,6 +106,7 @@ def convert_labels(labels: list[str], from_scheme: LabelingScheme, to_scheme: La
 
 
 def parse_label(label: str, sep: str = '-') -> tuple[Optional[str], Optional[str]]:
+    """Parse a token label into its tag and entity parts for token-based labeling schemes."""
     if sep in label:
         return tuple(label.split(sep=sep, maxsplit=1))
     elif label in 'OBILUES':
