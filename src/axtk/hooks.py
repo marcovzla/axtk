@@ -26,7 +26,8 @@ class Hook:
         self.unregister_hook()
 
     def __del__(self):
-        self.unregister_hook()
+        if self.is_registered:
+            self.unregister_hook()
 
     @property
     def is_registered(self) -> bool:
