@@ -10,6 +10,33 @@ KEYWORD_PARAMETERS = {
 }
 
 
+def get_caller_name(i: int = 0) -> str:
+    return inspect.stack()[i+1].function
+
+
+def get_caller_arguments(i: int = 0) -> tuple[tuple[Any, ...], dict[str, Any]]:
+    # get frame
+    stack = inspect.stack()
+    frame_info = stack[i+1]
+    frame = frame_info.frame
+    # get caller function
+    f = frame.f_globals[frame_info.function]
+    # get caller's signature
+    signature = inspect.signature(f)
+    # collect positional and keyword arguments
+    args, kwargs = [], {}
+    for param in signature.parameters.values():
+        # get argument value
+        value = frame.f_locals[param.name]
+        # store keyword argument unless it *must* be positional
+        if param.kind == inspect.Parameter.POSITIONAL_ONLY:
+            args.append(value)
+        else:
+            kwargs[param.name] = value
+    # return collected arguments
+    return tuple(args), kwargs
+
+
 def construct_kwargs(
         prefix: str,
         arguments: dict[str, Any],
@@ -30,11 +57,6 @@ def construct_kwargs(
             kwargs[name] = value
     # return results
     return kwargs
-
-
-def get_caller_name(i: int = 0) -> str:
-    stack = inspect.stack()
-    return stack[i+1].function
 
 
 def requires_positional_arguments(f: Callable) -> bool:
