@@ -101,7 +101,13 @@ class ModuleForwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
-    def hook_function(self, module: Module, args: Args, kwargs: KwArgs, output: Any) -> Optional[Any]:
+    def hook_function(
+            self,
+            module: Module,
+            args: tuple[Any, ...],
+            kwargs: dict[str, Any],
+            output: Any,
+    ) -> Optional[Any]:
         if self._hook_function is None:
             raise NotImplementedError
         return self._hook_function(self, module, args, kwargs, output)
@@ -126,7 +132,12 @@ class ModulePreForwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
-    def hook_function(self, module: Module, args: Args, kwargs: KwArgs) -> Optional[tuple[Any, KwArgs]]:
+    def hook_function(
+            self,
+            module: Module,
+            args: tuple[Any, ...],
+            kwargs: dict[str, Any],
+    ) -> Optional[tuple[Any, dict[str, Any]]]:
         if self._hook_function is None:
             raise NotImplementedError
         return self._hook_function(self, module, args, kwargs)
@@ -151,7 +162,12 @@ class ModuleBackwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
-    def hook_function(self, module: Module, grad_input: Grads, grad_output: Grads) -> Optional[Grads]:
+    def hook_function(
+            self,
+            module: Module,
+            grad_input: tuple[Optional[Tensor], ...],
+            grad_output: tuple[Optional[Tensor], ...],
+    ) -> Optional[tuple[Tensor]]:
         if self._hook_function is None:
             raise NotImplementedError
         return self._hook_function(self, module, grad_input, grad_output)
@@ -175,7 +191,11 @@ class ModulePreBackwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
-    def hook_function(self, module: Module, grad_output: Grads) -> Optional[Tensor]:
+    def hook_function(
+            self,
+            module: Module,
+            grad_output: tuple[Optional[Tensor], ...],
+    ) -> Optional[Tensor]:
         if self._hook_function is None:
             raise NotImplementedError
         return self._hook_function(self, module, grad_output)
