@@ -564,6 +564,23 @@ def make_start_constraints(
         scheme: LabelingScheme,
         invalid: float = -torch.inf,
 ) -> torch.Tensor:
+    """
+    Create a tensor of start constraints for a given labeling scheme.
+
+    This function generates a tensor representing start constraints for labels
+    in a specific labeling scheme. It uses the `is_valid_transition` function to determine
+    if transitioning from 'None' to a label is valid for each label, and assigns an 'invalid'
+    value to labels where transitioning from 'None' is not valid.
+
+    Args:
+        id2label (Dict[int, str]): A dictionary mapping label IDs to label strings.
+        scheme (LabelingScheme): The labeling scheme to consider for start constraints.
+        invalid (float, optional): The value to assign to labels where transitioning from 'None'
+                                   is invalid. Defaults to -inf.
+
+    Returns:
+        torch.Tensor: A tensor representing start constraints for labels.
+    """
     num_labels = len(id2label)
     start_constraints = torch.zeros(num_labels)
 
@@ -578,6 +595,23 @@ def make_end_constraints(
         scheme: LabelingScheme,
         invalid: float = -torch.inf,
 ) -> torch.Tensor:
+    """
+    Create a tensor of end constraints for a given labeling scheme.
+
+    This function generates a tensor representing end constraints for labels
+    in a specific labeling scheme. It uses the `is_valid_transition` function to determine
+    if transitioning to 'None' is valid for each label, and assigns an 'invalid' value to
+    labels where transitioning to 'None' is not valid.
+
+    Args:
+        id2label (Dict[int, str]): A dictionary mapping label IDs to label strings.
+        scheme (LabelingScheme): The labeling scheme to consider for end constraints.
+        invalid (float, optional): The value to assign to labels where transitioning to 'None' is invalid.
+                                   Defaults to -inf.
+
+    Returns:
+        torch.Tensor: A tensor representing end constraints for labels.
+    """
     num_labels = len(id2label)
     end_constraints = torch.zeros(num_labels)
 
@@ -592,6 +626,22 @@ def make_transition_constraints(
         scheme: LabelingScheme,
         invalid: float = -torch.inf,
 ) -> torch.Tensor:
+    """
+    Create a tensor of transition constraints for a given labeling scheme.
+
+    This function generates a tensor representing transition constraints between labels
+    for a specific labeling scheme. It uses the `is_valid_transition` function to determine
+    if a transition from one label to another is valid, and assigns an 'invalid' value to
+    invalid transitions.
+
+    Args:
+        id2label (Dict[int, str]): A dictionary mapping label IDs to label strings.
+        scheme (LabelingScheme): The labeling scheme to consider for transition constraints.
+        invalid (float, optional): The value to assign to invalid transitions. Defaults to -inf.
+
+    Returns:
+        torch.Tensor: A square matrix representing transition constraints between labels.
+    """
     num_labels = len(id2label)
     transition_constraints = torch.zeros(num_labels, num_labels)
 
