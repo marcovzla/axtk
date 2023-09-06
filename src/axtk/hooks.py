@@ -79,14 +79,13 @@ class TensorHook(TorchHook):
         self.tensor = tensor
         self._hook_function = hook_function
 
+    def register_hook(self):
+        self.handle = self.tensor.register_hook(self.hook_function)
+
     def hook_function(self, tensor: Tensor) -> Optional[Tensor]:
         if self._hook_function is None:
             raise NotImplementedError
         return self._hook_function(self, tensor)
-
-    def register_hook(self):
-        self.handle = self.tensor.register_hook(self.hook_function)
-
 
 
 class ModuleForwardHook(TorchHook):
@@ -101,6 +100,13 @@ class ModuleForwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
+    def register_hook(self):
+        self.handle = self.module.register_forward_hook(
+            hook=self.hook_function,
+            prepend=self.prepend,
+            with_kwargs=True,
+        )
+
     def hook_function(
             self,
             module: Module,
@@ -111,13 +117,6 @@ class ModuleForwardHook(TorchHook):
         if self._hook_function is None:
             raise NotImplementedError
         return self._hook_function(self, module, args, kwargs, output)
-
-    def register_hook(self):
-        self.handle = self.module.register_forward_hook(
-            hook=self.hook_function,
-            prepend=self.prepend,
-            with_kwargs=True,
-        )
 
 
 class ModulePreForwardHook(TorchHook):
@@ -132,6 +131,13 @@ class ModulePreForwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
+    def register_hook(self):
+        self.handle = self.module.register_forward_pre_hook(
+            hook=self.hook_function,
+            prepend=self.prepend,
+            with_kwargs=True,
+        )
+
     def hook_function(
             self,
             module: Module,
@@ -141,13 +147,6 @@ class ModulePreForwardHook(TorchHook):
         if self._hook_function is None:
             raise NotImplementedError
         return self._hook_function(self, module, args, kwargs)
-
-    def register_hook(self):
-        self.handle = self.module.register_forward_pre_hook(
-            hook=self.hook_function,
-            prepend=self.prepend,
-            with_kwargs=True,
-        )
 
 
 class ModuleBackwardHook(TorchHook):
@@ -162,6 +161,12 @@ class ModuleBackwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
+    def register_hook(self):
+        self.handle = self.module.register_full_backward_hook(
+            hook=self.hook_function,
+            prepend=self.prepend,
+        )
+
     def hook_function(
             self,
             module: Module,
@@ -171,12 +176,6 @@ class ModuleBackwardHook(TorchHook):
         if self._hook_function is None:
             raise NotImplementedError
         return self._hook_function(self, module, grad_input, grad_output)
-
-    def register_hook(self):
-        self.handle = self.module.register_full_backward_hook(
-            hook=self.hook_function,
-            prepend=self.prepend,
-        )
 
 
 class ModulePreBackwardHook(TorchHook):
@@ -191,6 +190,12 @@ class ModulePreBackwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
+    def register_hook(self):
+        self.handle = self.module.register_full_backward_pre_hook(
+            hook=self.hook_function,
+            prepend=self.prepend,
+        )
+
     def hook_function(
             self,
             module: Module,
@@ -199,9 +204,3 @@ class ModulePreBackwardHook(TorchHook):
         if self._hook_function is None:
             raise NotImplementedError
         return self._hook_function(self, module, grad_output)
-
-    def register_hook(self):
-        self.handle = self.module.register_full_backward_pre_hook(
-            hook=self.hook_function,
-            prepend=self.prepend,
-        )
