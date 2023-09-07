@@ -109,9 +109,9 @@ class TensorHook(TorchHook):
         self.handle = self.tensor.register_hook(self.hook_function)
 
     def hook_function(self, tensor: Tensor) -> Optional[Tensor]:
-        if self._hook_function is None:
-            raise NotImplementedError
-        return self._hook_function(self, tensor)
+        if self._hook_function is not None:
+            return self._hook_function(self, tensor)
+        raise NotImplementedError
 
 
 class ModuleForwardHook(TorchHook):
@@ -141,9 +141,9 @@ class ModuleForwardHook(TorchHook):
             kwargs: dict[str, Any],
             output: Any,
     ) -> Optional[Any]:
-        if self._hook_function is None:
-            raise NotImplementedError
-        return self._hook_function(self, module, args, kwargs, output)
+        if self._hook_function is not None:
+            return self._hook_function(self, module, args, kwargs, output)
+        raise NotImplementedError
 
 
 class ModulePreForwardHook(TorchHook):
@@ -172,9 +172,9 @@ class ModulePreForwardHook(TorchHook):
             args: tuple[Any, ...],
             kwargs: dict[str, Any],
     ) -> Optional[tuple[Any, dict[str, Any]]]:
-        if self._hook_function is None:
-            raise NotImplementedError
-        return self._hook_function(self, module, args, kwargs)
+        if self._hook_function is not None:
+            return self._hook_function(self, module, args, kwargs)
+        raise NotImplementedError
 
 
 class ModuleBackwardHook(TorchHook):
@@ -202,9 +202,9 @@ class ModuleBackwardHook(TorchHook):
             grad_input: tuple[Optional[Tensor], ...],
             grad_output: tuple[Optional[Tensor], ...],
     ) -> Optional[tuple[Tensor]]:
-        if self._hook_function is None:
-            raise NotImplementedError
-        return self._hook_function(self, module, grad_input, grad_output)
+        if self._hook_function is not None:
+            return self._hook_function(self, module, grad_input, grad_output)
+        raise NotImplementedError
 
 
 class ModulePreBackwardHook(TorchHook):
@@ -231,6 +231,6 @@ class ModulePreBackwardHook(TorchHook):
             module: Module,
             grad_output: tuple[Optional[Tensor], ...],
     ) -> Optional[Tensor]:
-        if self._hook_function is None:
-            raise NotImplementedError
-        return self._hook_function(self, module, grad_output)
+        if self._hook_function is not None:
+            return self._hook_function(self, module, grad_output)
+        raise NotImplementedError
