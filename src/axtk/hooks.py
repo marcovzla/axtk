@@ -18,6 +18,9 @@ ModulePreBackwardHookCallable = Callable[['ModulePreBackwardHook', Module, Grads
 
 
 class Hook:
+    def __init__(self):
+        self._registered: bool = False
+
     def __enter__(self):
         self.register_hook()
         return self
@@ -32,24 +35,25 @@ class Hook:
     @property
     def is_registered(self) -> bool:
         """Returns True if hook is currently registered."""
-        return False
+        return self._registered
 
     def register_hook(self):
         """Register hook."""
         if self.is_registered:
             raise Exception('hook is already registered')
+        self._registered = True
 
     def unregister_hook(self):
         """Unregister hook."""
         if not self.is_registered:
             raise Exception('hook is not currently registered')
+        self._registered = False
 
 
 class HookManager(Hook):
     def __init__(self, hooks: Optional[Iterable[Hook]] = None):
         super().__init__()
         self._hooks: list[Hook] = []
-        self._registered: bool = False
         self.hooks = hooks
 
     def __len__(self):
@@ -63,24 +67,18 @@ class HookManager(Hook):
         return self._hooks
 
     @hooks.setter
-    def hooks(self, hs: Optional[Iterable[Hook]]):
+    def hooks(self, hooks: Optional[Iterable[Hook]]):
         if self.is_registered:
             raise Exception('cannot swap hooks while manager is registered')
-        self._hooks = [] if hs is None else list(hs)
-
-    @property
-    def is_registered(self) -> bool:
-        return self._registered
+        self._hooks = [] if hooks is None else list(hooks)
 
     def register_hook(self):
         super().register_hook()
-        self._registered = True
         for hook in self.hooks:
             hook.register_hook()
 
     def unregister_hook(self):
         super().unregister_hook()
-        self._registered = False
         for hook in self.hooks:
             hook.unregister_hook()
 
@@ -89,10 +87,6 @@ class TorchHook(Hook):
     def __init__(self):
         super().__init__()
         self.handle: Optional[RemovableHandle] = None
-
-    @property
-    def is_registered(self) -> bool:
-        return self.handle is not None
 
     def unregister_hook(self):
         super().unregister_hook()
