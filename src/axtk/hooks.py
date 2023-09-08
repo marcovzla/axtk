@@ -3,10 +3,9 @@ from collections.abc import Callable, Iterable
 from torch import Tensor
 from torch.nn import Module
 from torch.utils.hooks import RemovableHandle
+from axtk.typing import Args, KwArgs
 
 
-Args = tuple[Any, ...]
-KwArgs = dict[str, Any]
 Grads = tuple[Optional[Tensor], ...]
 
 TensorHookCallable = Callable[['TensorHook', Tensor], Optional[Tensor]]
