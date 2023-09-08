@@ -1,3 +1,8 @@
 [project]
 name = "axtk"
 version = "0.1.0"
+dependencies = [
+    "torch",
+    "torchvision",
+    "natsort",
+]
