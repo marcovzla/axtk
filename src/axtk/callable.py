@@ -11,10 +11,31 @@ KEYWORD_PARAMETERS = {
 
 
 def get_caller_name(stack_level: int = 0) -> str:
+    """
+    Get the calling function's name at a specified stack level.
+
+    Args:
+        stack_level (int): The stack level to inspect, where 0 represents the calling function.
+
+    Returns:
+        str: The calling function's name.
+    """
     return inspect.stack()[stack_level+1].function
 
 
 def get_caller(stack_level: int = 0):
+    """
+    Get the calling function at a specified stack level.
+
+    Args:
+        stack_level (int): The stack level to inspect, where 0 represents the calling function.
+
+    Returns:
+        Callable: The calling function.
+
+    Raises:
+        Exception: If the caller function cannot be found in the call stack.
+    """
     info = inspect.stack()[stack_level+1]
     frame = info.frame
     name = info.function
@@ -37,26 +58,45 @@ def get_caller_arguments(
         caller: Optional[Callable] = None,
         return_kwargs_only: bool = False,
 ) -> Union[dict[str, Any], tuple[tuple[Any, ...], dict[str, Any]]]:
-    # get frame
+    """
+    Get the arguments passed to the calling function at a specified stack level.
+
+    Args:
+        stack_level (int): The stack level to inspect, where 0 represents the calling function.
+        caller (Optional[Callable]): The calling function. If not provided, it will be determined automatically.
+        return_kwargs_only (bool): If True, all arguments are returned as keyword arguments; otherwise, positional
+            and keyword arguments are returned separately. Defaults to False.
+
+    Returns:
+        Union[dict[str, Any], tuple[tuple[Any, ...], dict[str, Any]]]: The collected arguments. If return_kwargs_only
+        is True, returns a dictionary of keyword arguments. Otherwise, returns a tuple containing a tuple of
+        positional arguments and a dictionary of keyword arguments.
+    """
+    # Get frame information
     stack = inspect.stack()
     frame_info = stack[stack_level+1]
     frame = frame_info.frame
-    # get caller function
+
+    # Get the calling function
     if caller is None:
         caller = get_caller(stack_level+1)
-    # get caller's signature
+
+    # Get the signature of the calling function
     signature = inspect.signature(caller)
-    # collect positional and keyword arguments
+
+    # Collect positional and keyword arguments
     args, kwargs = [], {}
     for param in signature.parameters.values():
-        # get argument value
+        # Get the argument value
         value = frame.f_locals[param.name]
-        # store keyword argument unless it *must* be positional
+
+        # Store keyword argument unless it *must* be positional
         if param.kind == inspect.Parameter.POSITIONAL_ONLY and not return_kwargs_only:
             args.append(value)
         else:
             kwargs[param.name] = value
-    # return collected arguments
+
+    # Return collected arguments
     return kwargs if return_kwargs_only else (tuple(args), kwargs)
 
 
