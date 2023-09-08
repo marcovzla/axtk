@@ -1,6 +1,7 @@
 import textwrap
 import jinja2
 import jinja2.meta
+from natsort import natsorted
 
 
 class Template:
@@ -101,15 +102,24 @@ class Template:
         """
         # Ensure all input variables were provided
         if self.strict:
-            variables = dict(*args, **kwargs)
-            missing = ', '.join(
-                name
-                for name in self.input_variables
-                if name not in variables
-            )
-            if missing:
+            if missing := self.missing_variables(*args, **kwargs):
+                missing = ', '.join(missing)
                 raise ValueError(f'Missing variables: {missing}')
 
         # Render the template
         text = self.template.render(*args, **kwargs)
         return text
+
+    def missing_variables(self, *args, **kwargs) -> list[str]:
+        """
+        Get a list of undeclared variables that are missing in the provided variables.
+
+        Args:
+            *args: Positional arguments as dictionaries with input variables.
+            **kwargs: Keyword arguments corresponding to input variables.
+
+        Returns:
+            list[str]: A list of variable names that are undeclared in the template and missing in the provided variables.
+        """
+        variables = dict(*args, **kwargs)
+        return natsorted(self.input_variables - variables.keys())
