@@ -1,6 +1,6 @@
 import inspect
 from copy import copy
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from collections.abc import Callable
 
 
@@ -10,12 +10,12 @@ KEYWORD_PARAMETERS = {
 }
 
 
-def get_caller_name(i: int = 0) -> str:
-    return inspect.stack()[i+1].function
+def get_caller_name(stack_level: int = 0) -> str:
+    return inspect.stack()[stack_level+1].function
 
 
-def get_caller(i: int = 0):
-    info = inspect.stack()[i+1]
+def get_caller(stack_level: int = 0):
+    info = inspect.stack()[stack_level+1]
     frame = info.frame
     name = info.function
     while frame:
@@ -32,14 +32,18 @@ def get_caller(i: int = 0):
     raise Exception('caller not found')
 
 
-def get_caller_arguments(i: int = 0, caller: Optional[Callable] = None) -> tuple[tuple[Any, ...], dict[str, Any]]:
+def get_caller_arguments(
+        stack_level: int = 0,
+        caller: Optional[Callable] = None,
+        return_kwargs_only: bool = False,
+) -> Union[dict[str, Any], tuple[tuple[Any, ...], dict[str, Any]]]:
     # get frame
     stack = inspect.stack()
-    frame_info = stack[i+1]
+    frame_info = stack[stack_level+1]
     frame = frame_info.frame
     # get caller function
     if caller is None:
-        caller = get_caller(i+1)
+        caller = get_caller(stack_level+1)
     # get caller's signature
     signature = inspect.signature(caller)
     # collect positional and keyword arguments
@@ -48,12 +52,12 @@ def get_caller_arguments(i: int = 0, caller: Optional[Callable] = None) -> tuple
         # get argument value
         value = frame.f_locals[param.name]
         # store keyword argument unless it *must* be positional
-        if param.kind == inspect.Parameter.POSITIONAL_ONLY:
+        if param.kind == inspect.Parameter.POSITIONAL_ONLY and not return_kwargs_only:
             args.append(value)
         else:
             kwargs[param.name] = value
     # return collected arguments
-    return tuple(args), kwargs
+    return kwargs if return_kwargs_only else (tuple(args), kwargs)
 
 
 def construct_kwargs(
