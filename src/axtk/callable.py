@@ -1,6 +1,6 @@
 import inspect
 from copy import copy
-from typing import Any
+from typing import Any, Optional
 from collections.abc import Callable
 
 
@@ -14,15 +14,34 @@ def get_caller_name(i: int = 0) -> str:
     return inspect.stack()[i+1].function
 
 
-def get_caller_arguments(i: int = 0) -> tuple[tuple[Any, ...], dict[str, Any]]:
+def get_caller(i: int = 0):
+    info = inspect.stack()[i+1]
+    frame = info.frame
+    name = info.function
+    while frame:
+        if f := frame.f_globals.get(name):
+            if f.__code__ == info.frame.f_code:
+                return f
+        for f in frame.f_locals.values():
+            if getattr(f, '__code__', None) == info.frame.f_code:
+                return f
+            if f := getattr(f, name, None):
+                if f.__code__ == info.frame.f_code:
+                    return f
+        frame = frame.f_back
+    raise Exception('caller not found')
+
+
+def get_caller_arguments(i: int = 0, caller: Optional[Callable] = None) -> tuple[tuple[Any, ...], dict[str, Any]]:
     # get frame
     stack = inspect.stack()
     frame_info = stack[i+1]
     frame = frame_info.frame
     # get caller function
-    f = frame.f_globals[frame_info.function]
+    if caller is None:
+        caller = get_caller(i+1)
     # get caller's signature
-    signature = inspect.signature(f)
+    signature = inspect.signature(caller)
     # collect positional and keyword arguments
     args, kwargs = [], {}
     for param in signature.parameters.values():
