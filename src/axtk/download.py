@@ -1,12 +1,12 @@
 import re
-import uuid
 import mimetypes
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 from typing import Optional
 import requests
 from tqdm.auto import tqdm
 from axtk.typing import PathLike
+from axtk.slugify import slugify
 
 
 
@@ -100,11 +100,7 @@ def get_directory_path(directory: Optional[PathLike]) -> Path:
 
 def get_filename(url: str, response: requests.Response) -> str:
     """Determine the filename for a given URL and HTTP response."""
-    return (
-        get_filename_from_response(response)
-        or get_filename_from_url(url, response)
-        or generate_fallback_filename(response)
-    )
+    return get_filename_from_response(response) or get_filename_from_url(url, response)
 
 
 def get_filename_from_response(response: requests.Response) -> Optional[str]:
@@ -124,8 +120,13 @@ def get_filename_from_response(response: requests.Response) -> Optional[str]:
 
 def get_filename_from_url(url: str, response: Optional[requests.Response] = None) -> str:
     """Generate filename from a URL."""
-    # get path from url
+    # unquote url
+    url = unquote(url)
+
+    # get path
     path = Path(urlparse(url).path)
+    if not path.name:
+        path = Path(slugify(url))
 
     # get extension from response, if available
     if path.name and not path.suffix and response is not None:
@@ -133,12 +134,6 @@ def get_filename_from_url(url: str, response: Optional[requests.Response] = None
         path = path.with_suffix(suffix)
 
     return path.name
-
-
-def generate_fallback_filename(response: requests.Response) -> str:
-    """Generate a fallback filename based on the content type."""
-    extension = get_file_extension_from_response(response)
-    return f'{uuid.uuid4()}{extension}'
 
 
 def get_file_extension_from_response(response: requests.Response) -> str:
