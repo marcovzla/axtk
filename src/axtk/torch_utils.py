@@ -369,22 +369,22 @@ def slerp(
         start: torch.Tensor,
         end: torch.Tensor,
         t: Union[float, torch.Tensor],
-        dim: Optional[bool] = None,
-):
+        interpolation_dim: Optional[bool] = None,
+) -> torch.Tensor:
     """
     Performs Spherical Linear Interpolation (SLERP) between two vectors.
 
     Given two input vectors `start` and `end`, this function computes the result of
     Spherical Linear Interpolation (SLERP) based on the interpolation parameter `t`.
-    The optional parameter `dim` specifies the dimension along which the vectors are
-    treated for the interpolation.
+    The optional parameter `interpolation_dim` specifies the dimension along which
+    the vectors are treated for the interpolation.
 
     Args:
         start (torch.Tensor): The starting vector for the interpolation.
         end (torch.Tensor): The ending vector for the interpolation.
         t (Union[float, torch.Tensor]): Interpolation parameter ranging between 0 and 1.
-        dim (Optional[int], optional): The dimension along which to interpolate the vectors.
-            If provided, the interpolation will be performed along this dimension.
+        interpolation_dim (Optional[int], optional): The dimension along which to interpolate
+            the vectors. If provided, the interpolation will be performed along this dimension.
             Defaults to None.
 
     Returns:
@@ -394,22 +394,30 @@ def slerp(
         - The vectors `start` and `end` are not required to be unit vectors.
         - This function performs SLERP, which ensures constant angular velocity during
           the interpolation on the unit hypersphere.
-        - If `dim` is provided, the interpolation is performed along that dimension.
+        - If `interpolation_dim` is provided, the interpolation is performed along that dimension.
         - The resulting tensor will have the same shape as the input tensors.
 
     References:
         - https://en.wikipedia.org/wiki/Slerp#Geometric_Slerp
     """
-    keepdim = dim is not None
-    start_norm = start / torch.linalg.vector_norm(start, dim=dim, keepdim=keepdim)
-    end_norm = end / torch.linalg.vector_norm(end, dim=dim, keepdim=keepdim)
-    omega = torch.acos(torch.sum(start_norm * end_norm, dim=dim))
+    keepdim = interpolation_dim is not None
+    start_norm = torch.linalg.vector_norm(start, dim=interpolation_dim, keepdim=keepdim)
+    end_norm = torch.linalg.vector_norm(end, dim=interpolation_dim, keepdim=keepdim)
+
+    # Normalize vectors, handle zero norm vectors to avoid division by zero
+    start_unit = torch.where(start_norm == 0, start, start / start_norm)
+    end_unit = torch.where(end_norm == 0, end, end / end_norm)
+
+    omega = torch.acos(torch.sum(start_unit * end_unit, dim=interpolation_dim))
     sin_omega = torch.sin(omega)
+
     t0 = torch.where(sin_omega == 0, 1 - t, torch.sin((1 - t) * omega) / sin_omega)
     t1 = torch.where(sin_omega == 0, t, torch.sin(t * omega) / sin_omega)
-    if dim is not None:
-        t0.unsqueeze_(dim=dim)
-        t1.unsqueeze_(dim=dim)
+
+    if interpolation_dim is not None:
+        t0.unsqueeze_(interpolation_dim)
+        t1.unsqueeze_(interpolation_dim)
+
     return t0 * start + t1 * end
 
 
