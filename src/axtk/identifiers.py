@@ -1,17 +1,47 @@
 import re
 
 
-def split_snake_case(identifier: str) -> list[str]:
+def split_snakecase(identifier: str) -> list[str]:
+    """
+    Split a snake case string into its components.
+    
+    Args:
+        identifier (str): A string in snake case format.
+        
+    Returns:
+        list[str]: List of components extracted from the identifier.
+    """
     return identifier.split('_')
 
-def join_snake_case(parts: list[str], *, preserve_case: bool = False) -> str:
+def join_snakecase(parts: list[str], *, preserve_case: bool = False) -> str:
+    """
+    Join a list of strings into a snake case identifier.
+    
+    Args:
+        parts (list[str]): List of string components.
+        preserve_case (bool, optional): If set to True, the original case of parts is preserved.
+            Otherwise, all parts are converted to lowercase. Default is False.
+            
+    Returns:
+        str: A string in snake case format.
+    """
     if not preserve_case:
         parts = [p.lower() for p in parts]
     return '_'.join(parts)
 
-def abbreviate_snake_case(identifier: str) -> str:
-    parts = split_snake_case(identifier)
-    parts = [p[0].lower() for p in parts]
+def abbreviate_snakecase(identifier: str) -> str:
+    """
+    Abbreviate a snake case string by taking the first character of each component.
+    
+    Args:
+        identifier (str): A string in snake case format.
+        
+    Returns:
+        str: Abbreviated string.
+    """
+    parts = split_snakecase(identifier)
+    # Ensure that each part has at least one character
+    parts = [p[0].lower() if p else '' for p in parts]
     return ''.join(parts)
 
 
@@ -45,20 +75,20 @@ def abbreviate_camel_case(identifier: str) -> str:
     return ''.join(parts)
 
 
-def snake_case_to_camel_case(identifier: str, *, first_lowercase: bool = False) -> str:
-    return join_camel_case(split_snake_case(identifier), first_lowercase=first_lowercase)
+def snakecase_to_camel_case(identifier: str, *, first_lowercase: bool = False) -> str:
+    return join_camel_case(split_snakecase(identifier), first_lowercase=first_lowercase)
 
-def snake_case_to_kebab_case(identifier: str, *, preserve_case: bool = False) -> str:
-    return join_kebab_case(split_snake_case(identifier), preserve_case=preserve_case)
+def snakecase_to_kebab_case(identifier: str, *, preserve_case: bool = False) -> str:
+    return join_kebab_case(split_snakecase(identifier), preserve_case=preserve_case)
 
 def kebab_case_to_camel_case(identifier: str, *, first_lowercase: bool = False) -> str:
     return join_camel_case(split_kebab_case(identifier), first_lowercase=first_lowercase)
 
-def kebab_case_to_snake_case(identifier: str, *, preserve_case: bool = False) -> str:
-    return join_snake_case(split_kebab_case(identifier), preserve_case=preserve_case)
+def kebab_case_to_snakecase(identifier: str, *, preserve_case: bool = False) -> str:
+    return join_snakecase(split_kebab_case(identifier), preserve_case=preserve_case)
 
-def camel_case_to_snake_case(identifier: str, *, preserve_case: bool = False) -> str:
-    return join_snake_case(split_camel_case(identifier), preserve_case=preserve_case)
+def camel_case_to_snakecase(identifier: str, *, preserve_case: bool = False) -> str:
+    return join_snakecase(split_camel_case(identifier), preserve_case=preserve_case)
 
 def camel_case_to_kebab_case(identifier: str, *, preserve_case: bool = False) -> str:
     return join_kebab_case(split_camel_case(identifier), preserve_case=preserve_case)
