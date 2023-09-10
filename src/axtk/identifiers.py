@@ -102,14 +102,14 @@ def split_camelcase(identifier: str) -> list[str]:
     matches = re.finditer(r'.+?(?:(?<=[a-zA-Z])(?=[0-9])|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)', identifier)
     return [m.group(0) for m in matches]
 
-def join_camelcase(parts: list[str], *, first_lowercase: bool = False) -> str:
+def join_camelcase(parts: list[str], *, first_lowercase: bool = True) -> str:
     """
     Join a list of strings into a camelCase identifier.
     
     Args:
         parts (list[str]): List of string components.
         first_lowercase (bool, optional): If set to True, the first part of the identifier is in lowercase.
-            Otherwise, every part starts with an uppercase letter. Default is False.
+            Otherwise, every part starts with an uppercase letter. Default is True.
             
     Returns:
         str: A string in camelCase format.
@@ -135,9 +135,62 @@ def abbreviate_camelcase(identifier: str) -> str:
     return ''.join(parts)
 
 
-def snakecase_to_camelcase(identifier: str, *, first_lowercase: bool = False) -> str:
+def split_pascalcase(identifier: str) -> list[str]:
+    """
+    Split a PascalCase string into its components.
+    
+    Args:
+        identifier (str): A string in PascalCase format.
+        
+    Returns:
+        list[str]: List of components extracted from the identifier.
+    """
+    return split_camelcase(identifier)
+
+def join_pascalcase(parts: list[str], *, first_lowercase: bool = False) -> str:
+    """
+    Join a list of strings into a PascalCase identifier.
+    
+    Args:
+        parts (list[str]): List of string components.
+        first_lowercase (bool, optional): If set to True, the first part of the identifier is in lowercase.
+            Otherwise, every part starts with an uppercase letter. Default is False.
+            
+    Returns:
+        str: A string in PascalCase format.
+    """
+    return join_camelcase(parts, first_lowercase=first_lowercase)
+
+def abbreviate_pascalcase(identifier: str) -> str:
+    """
+    Abbreviate a PascalCase string by taking the first character of each component.
+    
+    Args:
+        identifier (str): A string in PascalCase format.
+        
+    Returns:
+        str: Abbreviated string.
+    """
+    return abbreviate_camelcase(identifier)
+
+
+def snakecase_to_camelcase(identifier: str, *, first_lowercase: bool = True) -> str:
     """
     Convert a snake_case identifier to camelCase format.
+
+    Args:
+        identifier (str): A string in snake_case format.
+        first_lowercase (bool, optional): If set to True, the resulting identifier starts with a lowercase letter.
+            Default is True.
+
+    Returns:
+        str: A string in camelCase format.
+    """
+    return join_camelcase(split_snakecase(identifier), first_lowercase=first_lowercase)
+
+def snakecase_to_pascalcase(identifier: str, *, first_lowercase: bool = False) -> str:
+    """
+    Convert a snake_case identifier to PascalCase format.
 
     Args:
         identifier (str): A string in snake_case format.
@@ -145,9 +198,9 @@ def snakecase_to_camelcase(identifier: str, *, first_lowercase: bool = False) ->
             Default is False.
 
     Returns:
-        str: A string in camelCase format.
+        str: A string in PascalCase format.
     """
-    return join_camelcase(split_snakecase(identifier), first_lowercase=first_lowercase)
+    return join_pascalcase(split_snakecase(identifier), first_lowercase=first_lowercase)
 
 def snakecase_to_kebabcase(identifier: str, *, preserve_case: bool = False) -> str:
     """
@@ -163,9 +216,23 @@ def snakecase_to_kebabcase(identifier: str, *, preserve_case: bool = False) -> s
     """
     return join_kebabcase(split_snakecase(identifier), preserve_case=preserve_case)
 
-def kebabcase_to_camelcase(identifier: str, *, first_lowercase: bool = False) -> str:
+def kebabcase_to_camelcase(identifier: str, *, first_lowercase: bool = True) -> str:
     """
     Convert a kebab-case identifier to camelCase format.
+
+    Args:
+        identifier (str): A string in kebab-case format.
+        first_lowercase (bool, optional): If set to True, the resulting identifier starts with a lowercase letter.
+            Default is True.
+
+    Returns:
+        str: A string in camelCase format.
+    """
+    return join_camelcase(split_kebabcase(identifier), first_lowercase=first_lowercase)
+
+def kebabcase_to_pascalcase(identifier: str, *, first_lowercase: bool = False) -> str:
+    """
+    Convert a kebab-case identifier to PascalCase format.
 
     Args:
         identifier (str): A string in kebab-case format.
@@ -173,9 +240,9 @@ def kebabcase_to_camelcase(identifier: str, *, first_lowercase: bool = False) ->
             Default is False.
 
     Returns:
-        str: A string in camelCase format.
+        str: A string in PascalCase format.
     """
-    return join_camelcase(split_kebabcase(identifier), first_lowercase=first_lowercase)
+    return join_pascalcase(split_kebabcase(identifier), first_lowercase=first_lowercase)
 
 def kebabcase_to_snakecase(identifier: str, *, preserve_case: bool = False) -> str:
     """
@@ -218,3 +285,59 @@ def camelcase_to_kebabcase(identifier: str, *, preserve_case: bool = False) -> s
         str: A string in kebab-case format.
     """
     return join_kebabcase(split_camelcase(identifier), preserve_case=preserve_case)
+
+def camelcase_to_pascalcase(identifier: str, *, first_lowercase: bool = False) -> str:
+    """
+    Convert a camelCase identifier to PascalCase format.
+
+    Args:
+        identifier (str): A string in camelCase format.
+        first_lowercase (bool, optional): If set to True, the resulting identifier starts with a lowercase letter.
+            Default is False.
+
+    Returns:
+        str: A string in PascalCase format.
+    """
+    return join_pascalcase(split_camelcase(identifier), first_lowercase=first_lowercase)
+
+def pascalcase_to_snakecase(identifier: str, *, preserve_case: bool = False) -> str:
+    """
+    Convert a PascalCase identifier to snake_case format.
+
+    Args:
+        identifier (str): A string in PascalCase format.
+        preserve_case (bool, optional): If set to True, the original case of identifier is preserved.
+            Default is False.
+
+    Returns:
+        str: A string in snake_case format.
+    """
+    return join_snakecase(split_pascalcase(identifier), preserve_case=preserve_case)
+
+def pascalcase_to_kebabcase(identifier: str, *, preserve_case: bool = False) -> str:
+    """
+    Convert a PascalCase identifier to kebab-case format.
+
+    Args:
+        identifier (str): A string in PascalCase format.
+        preserve_case (bool, optional): If set to True, the original case of identifier is preserved.
+            Default is False.
+
+    Returns:
+        str: A string in kebab-case format.
+    """
+    return join_kebabcase(split_pascalcase(identifier), preserve_case=preserve_case)
+
+def pascalcase_to_camelcase(identifier: str, *, first_lowercase: bool = True) -> str:
+    """
+    Convert a PascalCase identifier to camelCase format.
+
+    Args:
+        identifier (str): A string in PascalCase format.
+        first_lowercase (bool, optional): If set to True, the resulting identifier starts with a lowercase letter.
+            Default is True.
+
+    Returns:
+        str: A string in camelCase format.
+    """
+    return join_camelcase(split_pascalcase(identifier), first_lowercase=first_lowercase)
