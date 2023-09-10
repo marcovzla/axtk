@@ -471,3 +471,57 @@ def smooth_values(
         output = output.transpose(dim, -1)
     # return output
     return output.contiguous()
+
+
+def relative_positions(
+        size: int,
+        max_distance: Optional[int] = None,
+        apply_offset: bool = False,
+) -> torch.Tensor:
+    """
+    Computes a matrix of relative positions.
+
+    Args:
+        size (int): Size of the matrix (size x size).
+        max_distance (Optional[int]): Maximum absolute value for the relative positions. 
+            If provided, all values in the resulting matrix will be clipped between [-max_distance, max_distance].
+        apply_offset (bool): If True, offsets the values in the matrix by `max_distance` so the range becomes [0, 2*max_distance].
+            This is valid only if `max_distance` is provided.
+
+    Returns:
+        torch.Tensor: A matrix representing the relative positions.
+
+    Example:
+        If size=5, without any clipping or offset, the matrix will be:
+        [[ 0,  1,  2,  3,  4],
+         [-1,  0,  1,  2,  3],
+         [-2, -1,  0,  1,  2],
+         [-3, -2, -1,  0,  1],
+         [-4, -3, -2, -1,  0]]
+
+        With max_distance=2, the matrix will be:
+        [[ 0,  1,  2,  2,  2],
+         [-1,  0,  1,  2,  2],
+         [-2, -1,  0,  1,  2],
+         [-2, -2, -1,  0,  1],
+         [-2, -2, -2, -1,  0]]
+
+        With max_distance=2 and apply_offset=True, the matrix will be:
+        [[2, 3, 4, 4, 4],
+         [1, 2, 3, 4, 4],
+         [0, 1, 2, 3, 4],
+         [0, 0, 1, 2, 3],
+         [0, 0, 0, 1, 2]]
+    """
+    position = torch.arange(size).expand(size, size)
+    relative_matrix = position - position.T
+
+    if max_distance is not None:
+        relative_matrix = relative_matrix.clip(-max_distance, max_distance)
+
+    if apply_offset:
+        if max_distance is None:
+            raise ValueError('Max distance needs to be provided for offset to be applied.')
+        relative_matrix = relative_matrix + max_distance
+
+    return relative_matrix
