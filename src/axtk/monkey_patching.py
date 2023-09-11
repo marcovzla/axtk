@@ -150,15 +150,20 @@ def patch_dunder_methods(obj: Any, **kwargs: FunctionOrMethod):
     obj.__class__ = patched_cls
 
 
-def restore_dunder_methods(obj: Any):
+def restore_dunder_methods(obj: Any, recursive_restore: bool = False):
     """
     Restore the original class of an object by removing monkey-patched dunder methods.
 
-    This function repeatedly restores the object's class to its base class until it no longer
-    has monkey-patched dunder methods.
+    This function restores the object's class to its immediate base class or repeatedly
+    to its ancestors until it no longer has monkey-patched dunder methods.
 
     Parameters:
-        obj (Any): The object to restore.
+        obj (Any): The object whose dunder methods need to be restored.
+        recursive_restore (bool, optional): If True, recursively restores the object's class
+            to its base classes until no monkey-patched dunder methods are found.
+            Otherwise, only the immediate base class is used. Default is False.
     """
     while has_patched_dunder_methods(obj):
         obj.__class__ = obj.__class__.__base__
+        if not recursive_restore:
+            break
