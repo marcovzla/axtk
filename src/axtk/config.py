@@ -121,12 +121,12 @@ class Config(MutableMapping):
                 self[key] = value
 
     def fields(self) -> Iterator[str]:
-        for k, v in self.items():
-            if isinstance(v, Config):
-                for f in v.fields():
-                    yield f'{k}.{f}'
+        for key, value in self.items():
+            if isinstance(value, Config):
+                for field in value.fields():
+                    yield f'{key}{SEPARATOR}{field}'
             else:
-                yield k
+                yield key
 
     @classmethod
     def from_json(cls, s: str):
