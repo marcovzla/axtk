@@ -1,11 +1,12 @@
 from __future__ import annotations
 from typing import Any, Union, Optional
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Mapping, MutableMapping, Iterator
 import json
 import copy
 
 
 CONFIG_FIELDS_NAME = '_config_fields'
+SEPARATOR = '.'
 
 
 class Config(MutableMapping):
@@ -25,33 +26,49 @@ class Config(MutableMapping):
     def __iter__(self):
         return iter(self._config_fields)
 
-    def __contains__(self, key):
-        return key in self._config_fields
+    def __getitem__(self, key: str):
+        try:
+            keys = key.split(SEPARATOR, maxsplit=1)
+            item = self._config_fields[keys[0]]
+            return item[keys[1]] if len(keys) == 2 else item
+        except:
+            raise KeyError(key)
 
-    def __getitem__(self, key):
-        return self._config_fields[key]
-
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any):
         if isinstance(value, Mapping):
             value = self.new_config(value)
-        self._config_fields[key] = value
+        keys = key.split(SEPARATOR, maxsplit=1)
+        if len(keys) == 1:
+            self._config_fields[keys[0]] = value
+        elif keys[0] in self:
+            self._config_fields[keys[0]][keys[1]] = value
+        else:
+            self._config_fields[keys[0]] = self.new_config({keys[1]: value})
 
-    def __delitem__(self, key):
-        del self._config_fields[key]
+    def __delitem__(self, key: str):
+        try:
+            keys = key.split(SEPARATOR, maxsplit=1)
+            if len(keys) == 1:
+                del self._config_fields[keys[0]]
+            else:
+                config = self._config_fields[keys[0]]
+                del config[keys[1]]
+        except:
+            raise KeyError(key)
     
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         try:
             return self[name]
         except KeyError:
             raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any):
         if name == CONFIG_FIELDS_NAME:
             super().__setattr__(CONFIG_FIELDS_NAME, value)
         else:
             self[name] = value
 
-    def __delattr__(self, name):
+    def __delattr__(self, name: str):
         try:
             del self[name]
         except KeyError:
@@ -64,7 +81,7 @@ class Config(MutableMapping):
         new_copy._config_fields = dict(self._config_fields)
         return new_copy
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: dict[int, Any]):
         # Avoiding recursive deep copies
         if id(self) in memo:
             return memo[id(self)]
@@ -75,21 +92,27 @@ class Config(MutableMapping):
         new_copy._config_fields = copy.deepcopy(self._config_fields, memo)
         return new_copy
 
-    def __or__(self, other):
+    def __or__(self, other: Mapping):
         new_config = copy.deepcopy(self)
         new_config.update(other)
         return new_config
 
-    def __ror__(self, other):
+    def __ror__(self, other: Mapping):
         new_config = self.new_config(copy.deepcopy(other))
         new_config.update(self)
         return new_config
 
-    def __ior__(self, other):
+    def __ior__(self, other: Mapping):
         self.update(other)
         return self
 
-    def update(self, other):
+    def new_config(self, *args, **kwargs):
+        return self.__class__(*args, **kwargs)
+
+    def copy(self, *, shallow: bool = False):
+        return copy.copy(self) if shallow else copy.deepcopy(self)
+
+    def update(self, other: Mapping):
         other = self.new_config(other)
         for key, value in other.items():
             if key in self and isinstance(self[key], Config) and isinstance(value, Config):
@@ -97,23 +120,20 @@ class Config(MutableMapping):
             else:
                 self[key] = value
 
-    def copy(self, *, shallow: bool = False):
-        return copy.copy(self) if shallow else copy.deepcopy(self)
-
-    def new_config(self, *args, **kwargs):
-        return self.__class__(*args, **kwargs)
+    def fields(self) -> Iterator[str]:
+        for k, v in self.items():
+            if isinstance(v, Config):
+                for f in v.fields():
+                    yield f'{k}.{f}'
+            else:
+                yield k
 
     @classmethod
     def from_json(cls, s: str):
         """Load a Config object from a JSON string."""
         return json.loads(s, cls=ConfigJSONDecoder, config_cls=cls)
 
-    def to_json(
-            self,
-            *,
-            ensure_ascii: bool = False,
-            indent: Optional[Union[int, str]] = None,
-    ):
+    def to_json(self, *, ensure_ascii: bool = False, indent: Optional[Union[int, str]] = None):
         """Convert the Config object to a JSON string."""
         return json.dumps(self, ensure_ascii=ensure_ascii, indent=indent, cls=ConfigJSONEncoder)
 
