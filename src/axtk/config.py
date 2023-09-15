@@ -16,12 +16,8 @@ class Config(MutableMapping):
 
     def __init__(self, *args, **kwargs):
         self._config_fields: dict[str, Any] = {}
-        # initialize with class attributes
-        for name in vars(type(self)):
-            if not name.startswith('_'):
-                self[name] = getattr(type(self), name)
-        # add provided entries
-        for k, v in dict(*args, **kwargs).items():
+        entries = self.defaults() | dict(*args, **kwargs)
+        for k, v in entries.items():
             self[k] = v
 
     def __repr__(self):
@@ -114,6 +110,35 @@ class Config(MutableMapping):
         self.update(other)
         return self
 
+    @classmethod
+    def defaults(cls) -> dict[str, Any]:
+        return {
+            name: getattr(cls, name)
+            for name in vars(cls)
+            if not name.startswith('_')
+        }
+
+    @classmethod
+    def from_dotenv(cls, *paths: PathLike, keepcase: bool = False):
+        if paths:
+            values = dict()
+            for path in paths:
+                values.update(dotenv_values(path))
+        else:
+            values = dotenv_values()
+        if not keepcase:
+            values = {k.lower(): v for k, v in values.items()}
+        return cls(values)
+
+    @classmethod
+    def from_json(cls, s: str):
+        """Load a Config object from a JSON string."""
+        return json.loads(s, cls=ConfigJSONDecoder, config_cls=cls)
+
+    def to_json(self, *, ensure_ascii: bool = False, indent: Optional[Union[int, str]] = None):
+        """Convert the Config object to a JSON string."""
+        return json.dumps(self, ensure_ascii=ensure_ascii, indent=indent, cls=ConfigJSONEncoder)
+
     def new_config(self, *args, **kwargs):
         return self.__class__(*args, **kwargs)
 
@@ -145,27 +170,6 @@ class Config(MutableMapping):
             if isinstance(annotation, type):
                 return annotation(value)
         return value
-
-    @classmethod
-    def from_dotenv(cls, *paths: PathLike, keepcase: bool = False):
-        if paths:
-            values = dict()
-            for path in paths:
-                values.update(dotenv_values(path))
-        else:
-            values = dotenv_values()
-        if not keepcase:
-            values = {k.lower(): v for k, v in values.items()}
-        return cls(values)
-
-    @classmethod
-    def from_json(cls, s: str):
-        """Load a Config object from a JSON string."""
-        return json.loads(s, cls=ConfigJSONDecoder, config_cls=cls)
-
-    def to_json(self, *, ensure_ascii: bool = False, indent: Optional[Union[int, str]] = None):
-        """Convert the Config object to a JSON string."""
-        return json.dumps(self, ensure_ascii=ensure_ascii, indent=indent, cls=ConfigJSONEncoder)
 
 
 class ConfigJSONEncoder(json.JSONEncoder):
