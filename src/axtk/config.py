@@ -16,9 +16,7 @@ class Config(MutableMapping):
 
     def __init__(self, *args, **kwargs):
         self._config_fields: dict[str, Any] = {}
-        entries = self.defaults() | dict(*args, **kwargs)
-        for k, v in entries.items():
-            self[k] = v
+        self.update(self.defaults() | dict(*args, **kwargs))
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self._config_fields})'
@@ -145,10 +143,9 @@ class Config(MutableMapping):
     def copy(self, *, shallow: bool = False):
         return copy.copy(self) if shallow else copy.deepcopy(self)
 
-    def update(self, other: Mapping):
-        other = self.new_config(other)
+    def update(self, other: Mapping[str, Any]):
         for key, value in other.items():
-            if key in self and isinstance(self[key], Config) and isinstance(value, Config):
+            if key in self and isinstance(self[key], Config) and isinstance(value, Mapping):
                 self[key].update(value)
             else:
                 self[key] = value
