@@ -7,4 +7,5 @@ dependencies = [
     "natsort",
     "anyascii",
     "tqdm",
+    "python-dotenv",
 ]
