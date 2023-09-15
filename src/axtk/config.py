@@ -37,7 +37,7 @@ class Config(MutableMapping):
 
     def __setitem__(self, key: str, value: Any):
         if isinstance(value, Mapping):
-            value = self.new_config(value)
+            value = Config(value)
         keys = key.split(SEPARATOR, maxsplit=1)
         if len(keys) == 1:
             value = self.enforce_annotation(keys[0], value)
@@ -45,7 +45,7 @@ class Config(MutableMapping):
         elif keys[0] in self:
             self._config_fields[keys[0]][keys[1]] = value
         else:
-            self._config_fields[keys[0]] = self.new_config({keys[1]: value})
+            self._config_fields[keys[0]] = Config({keys[1]: value})
 
     def __delitem__(self, key: str):
         try:
@@ -100,7 +100,7 @@ class Config(MutableMapping):
         return new_config
 
     def __ror__(self, other: Mapping):
-        new_config = self.new_config(copy.deepcopy(other))
+        new_config = Config(copy.deepcopy(other))
         new_config.update(self)
         return new_config
 
@@ -111,9 +111,12 @@ class Config(MutableMapping):
     @classmethod
     def defaults(cls) -> dict[str, Any]:
         return {
-            name: getattr(cls, name)
-            for name in vars(cls)
-            if not name.startswith('_')
+            key: value
+            for c in reversed(cls.mro())
+            if issubclass(c, Config)
+            for key, value in vars(c).items()
+            if not key.startswith('_')
+            if not callable(value) and not isinstance(value, (classmethod, staticmethod))
         }
 
     @classmethod
@@ -137,9 +140,6 @@ class Config(MutableMapping):
         """Convert the Config object to a JSON string."""
         return json.dumps(self, ensure_ascii=ensure_ascii, indent=indent, cls=ConfigJSONEncoder)
 
-    def new_config(self, *args, **kwargs):
-        return self.__class__(*args, **kwargs)
-
     def copy(self, *, shallow: bool = False):
         return copy.copy(self) if shallow else copy.deepcopy(self)
 
@@ -159,8 +159,10 @@ class Config(MutableMapping):
                 yield key
 
     def annotation(self, key: str) -> Optional[Any]:
-        if hasattr(self, '__annotations__'):
-            return self.__annotations__.get(key)
+        for c in type(self).mro():
+            if issubclass(c, Config) and hasattr(c, '__annotations__'):
+                if key in c.__annotations__:
+                    return c.__annotations__[key]
 
     def enforce_annotation(self, key: str, value: Any) -> Any:
         if annotation := self.annotation(key):
