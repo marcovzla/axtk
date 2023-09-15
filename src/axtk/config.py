@@ -3,6 +3,8 @@ from typing import Any, Union, Optional
 from collections.abc import Mapping, MutableMapping, Iterator
 import json
 import copy
+from dotenv import dotenv_values
+from axtk.typing import PathLike
 
 
 CONFIG_FIELDS_NAME = '_config_fields'
@@ -14,6 +16,11 @@ class Config(MutableMapping):
 
     def __init__(self, *args, **kwargs):
         self._config_fields: dict[str, Any] = {}
+        # initialize with class attributes
+        for name in vars(type(self)):
+            if not name.startswith('_'):
+                self[name] = getattr(type(self), name)
+        # add provided entries
         for k, v in dict(*args, **kwargs).items():
             self[k] = v
 
@@ -39,6 +46,7 @@ class Config(MutableMapping):
             value = self.new_config(value)
         keys = key.split(SEPARATOR, maxsplit=1)
         if len(keys) == 1:
+            value = self.enforce_annotation(keys[0], value)
             self._config_fields[keys[0]] = value
         elif keys[0] in self:
             self._config_fields[keys[0]][keys[1]] = value
@@ -127,6 +135,28 @@ class Config(MutableMapping):
                     yield f'{key}{SEPARATOR}{field}'
             else:
                 yield key
+
+    def annotation(self, key: str) -> Optional[Any]:
+        if hasattr(self, '__annotations__'):
+            return self.__annotations__.get(key)
+
+    def enforce_annotation(self, key: str, value: Any) -> Any:
+        if annotation := self.annotation(key):
+            if isinstance(annotation, type):
+                return annotation(value)
+        return value
+
+    @classmethod
+    def from_dotenv(cls, *paths: PathLike, keepcase: bool = False):
+        if paths:
+            values = dict()
+            for path in paths:
+                values.update(dotenv_values(path))
+        else:
+            values = dotenv_values()
+        if not keepcase:
+            values = {k.lower(): v for k, v in values.items()}
+        return cls(values)
 
     @classmethod
     def from_json(cls, s: str):
