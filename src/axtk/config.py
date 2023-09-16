@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any, Union, Optional
-from collections.abc import Mapping, Iterator
+from collections.abc import Mapping, Iterator, Sequence
 import json
 import copy
 from dotenv import dotenv_values
@@ -29,9 +29,7 @@ class Config(Mapping):
 
     def __getitem__(self, key: str):
         try:
-            keys = key.split(SEPARATOR, maxsplit=1)
-            item = self._config_fields[keys[0]]
-            return item[keys[1]] if len(keys) == 2 else item
+            return self._find_item(key)
         except:
             raise KeyError(key)
 
@@ -49,12 +47,9 @@ class Config(Mapping):
 
     def __delitem__(self, key: str):
         try:
-            keys = key.split(SEPARATOR, maxsplit=1)
-            if len(keys) == 1:
-                del self._config_fields[keys[0]]
-            else:
-                config = self._config_fields[keys[0]]
-                del config[keys[1]]
+            keys = key.split(SEPARATOR)
+            item = self._find_item(keys[:-1])
+            del item[int(keys[-1]) if isinstance(item, Sequence) else keys[-1]]
         except:
             raise KeyError(key)
     
@@ -182,6 +177,19 @@ class Config(Mapping):
                     yield f'{key}{SEPARATOR}{name}', val
             else:
                 yield key, value
+
+    def _find_item(self, keys: Union[str, list[str]]) -> Any:
+        if not keys:
+            return self
+        if isinstance(keys, str):
+            keys = keys.split(SEPARATOR)
+        item = self._config_fields[keys[0]]
+        for k in keys[1:]:
+            if isinstance(item, Sequence):
+                item = item[int(k)]
+            else:
+                item = item[k]
+        return item
 
 
 class ConfigJSONEncoder(json.JSONEncoder):
