@@ -29,27 +29,27 @@ class Config(Mapping):
 
     def __getitem__(self, key: str):
         try:
-            return self._find_item(key)
+            return self._apply_key(key)
         except:
             raise KeyError(key)
 
     def __setitem__(self, key: str, value: Any):
-        if isinstance(value, Mapping):
-            value = Config(value)
-        keys = key.split(SEPARATOR, maxsplit=1)
+        value = self.preprocess_value(value)
+        keys = key.split(SEPARATOR)
         if len(keys) == 1:
-            value = self.enforce_annotation(keys[0], value)
             self._config_fields[keys[0]] = value
-        elif keys[0] in self:
-            self._config_fields[keys[0]][keys[1]] = value
         else:
-            self._config_fields[keys[0]] = Config({keys[1]: value})
+            item = self._apply_key(keys[:-1], insert=True)
+            item[int(keys[-1]) if isinstance(item, Sequence) else keys[-1]] = value
 
     def __delitem__(self, key: str):
         try:
             keys = key.split(SEPARATOR)
-            item = self._find_item(keys[:-1])
-            del item[int(keys[-1]) if isinstance(item, Sequence) else keys[-1]]
+            if len(keys) == 1:
+                del self._config_fields[keys[0]]
+            else:
+                item = self._apply_key(keys[:-1])
+                del item[int(keys[-1]) if isinstance(item, Sequence) else keys[-1]]
         except:
             raise KeyError(key)
     
@@ -118,6 +118,17 @@ class Config(Mapping):
         return value
 
     @classmethod
+    def preprocess_value(cls, value: Any) -> Any:
+        if isinstance(value, Mapping):
+            value = Config(value)
+        elif isinstance(value, Sequence):
+            value = [
+                Config(v) if isinstance(v, Mapping) else v
+                for v in value
+            ]
+        return value
+
+    @classmethod
     def defaults(cls) -> dict[str, Any]:
         return {
             key: value
@@ -178,7 +189,7 @@ class Config(Mapping):
             else:
                 yield key, value
 
-    def _find_item(self, keys: Union[str, list[str]]) -> Any:
+    def _apply_key(self, keys: Union[str, list[str]], insert: bool = False) -> Any:
         if not keys:
             return self
         if isinstance(keys, str):
@@ -186,9 +197,10 @@ class Config(Mapping):
         item = self._config_fields[keys[0]]
         for k in keys[1:]:
             if isinstance(item, Sequence):
-                item = item[int(k)]
-            else:
-                item = item[k]
+                k = int(k)
+            elif insert and isinstance(item, Mapping) and k not in item:
+                item[k] = Config()
+            item = item[k]
         return item
 
 
