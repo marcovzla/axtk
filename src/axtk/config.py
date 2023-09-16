@@ -109,6 +109,20 @@ class Config(MutableMapping):
         return self
 
     @classmethod
+    def annotation(cls, key: str) -> Optional[Any]:
+        for c in cls.mro():
+            if issubclass(c, Config) and hasattr(c, '__annotations__'):
+                if key in c.__annotations__:
+                    return c.__annotations__[key]
+
+    @classmethod
+    def enforce_annotation(cls, key: str, value: Any) -> Any:
+        if annotation := cls.annotation(key):
+            if isinstance(annotation, type) and not isinstance(value, annotation):
+                return annotation(value)
+        return value
+
+    @classmethod
     def defaults(cls) -> dict[str, Any]:
         return {
             key: value
@@ -121,15 +135,21 @@ class Config(MutableMapping):
 
     @classmethod
     def from_dotenv(cls, *paths: PathLike, keepcase: bool = False):
+        # read values from dotenv files
         if paths:
-            values = dict()
+            values = {}
             for path in paths:
                 values.update(dotenv_values(path))
         else:
             values = dotenv_values()
-        if not keepcase:
-            values = {k.lower(): v for k, v in values.items()}
-        return cls(values)
+        # convert dotenv values to config fields
+        fields = {}
+        for k, v in values.items():
+            if not keepcase:
+                k = k.lower()
+            fields[k] = cls.enforce_annotation(k, v)
+        # return config
+        return cls(fields)
 
     @classmethod
     def from_json(cls, s: str):
@@ -157,18 +177,6 @@ class Config(MutableMapping):
                     yield f'{key}{SEPARATOR}{field}'
             else:
                 yield key
-
-    def annotation(self, key: str) -> Optional[Any]:
-        for c in type(self).mro():
-            if issubclass(c, Config) and hasattr(c, '__annotations__'):
-                if key in c.__annotations__:
-                    return c.__annotations__[key]
-
-    def enforce_annotation(self, key: str, value: Any) -> Any:
-        if annotation := self.annotation(key):
-            if isinstance(annotation, type):
-                return annotation(value)
-        return value
 
 
 class ConfigJSONEncoder(json.JSONEncoder):
