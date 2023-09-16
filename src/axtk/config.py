@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any, Union, Optional
-from collections.abc import Mapping, MutableMapping, Iterator
+from collections.abc import Mapping, Iterator
 import json
 import copy
 from dotenv import dotenv_values
@@ -11,7 +11,7 @@ CONFIG_FIELDS_NAME = '_config_fields'
 SEPARATOR = '.'
 
 
-class Config(MutableMapping):
+class Config(Mapping):
     """A Config class that acts like a dictionary but provides additional features."""
 
     def __init__(self, *args, **kwargs):
@@ -160,23 +160,28 @@ class Config(MutableMapping):
         """Convert the Config object to a JSON string."""
         return json.dumps(self, ensure_ascii=ensure_ascii, indent=indent, cls=ConfigJSONEncoder)
 
-    def copy(self, *, shallow: bool = False):
-        return copy.copy(self) if shallow else copy.deepcopy(self)
-
-    def update(self, other: Mapping[str, Any]):
-        for key, value in other.items():
+    def update(self, *args, **kwargs):
+        for key, value in dict(*args, **kwargs).items():
             if key in self and isinstance(self[key], Config) and isinstance(value, Mapping):
                 self[key].update(value)
             else:
                 self[key] = value
 
-    def fields(self) -> Iterator[str]:
+    def field_names(self) -> Iterator[str]:
         for key, value in self.items():
             if isinstance(value, Config):
-                for field in value.fields():
-                    yield f'{key}{SEPARATOR}{field}'
+                for name in value.field_names():
+                    yield f'{key}{SEPARATOR}{name}'
             else:
                 yield key
+
+    def fields(self) -> Iterator[tuple[str, Any]]:
+        for key, value in self.items():
+            if isinstance(value, Config):
+                for name, val in value.fields():
+                    yield f'{key}{SEPARATOR}{name}', val
+            else:
+                yield key, value
 
 
 class ConfigJSONEncoder(json.JSONEncoder):
