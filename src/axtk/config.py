@@ -198,8 +198,12 @@ class Config(Mapping):
         for k in keys[1:]:
             if isinstance(item, Sequence):
                 k = int(k)
-            elif insert and isinstance(item, Mapping) and k not in item:
-                item[k] = Config()
+            if insert:
+                if isinstance(item, Mapping) and k not in item:
+                    item[k] = Config()
+                elif isinstance(item, list) and k >= len(item):
+                    item += [None] * (k - len(item) + 1)
+                    item[k] = Config()
             item = item[k]
         return item
 
