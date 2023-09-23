@@ -44,12 +44,12 @@ def delimited_string(
     # Construct patterns
     patterns = []
     for i in range(len(delimiters)):
-        open_delim = regex.escape(delimiters[i])
-        close_delim = regex.escape(close_delimiters[i])
+        open_delim = re.escape(delimiters[i])
+        close_delim = re.escape(close_delimiters[i])
         if escape_chars is None:
             pattern = f'{open_delim}[^{close_delim}]*{close_delim}'
         else:
-            esc_char = regex.escape(escape_chars[i])
+            esc_char = re.escape(escape_chars[i])
             if esc_char == close_delim:
                 pattern = f'{open_delim}[^{close_delim}]*(?:{close_delim}{close_delim}[^{close_delim}]*)*{close_delim}'
             else:
