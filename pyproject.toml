@@ -4,8 +4,6 @@ version = "0.1.0"
 dependencies = [
     "torch",
     "torchvision",
-    "natsort",
     "anyascii",
     "tqdm",
-    "python-dotenv",
 ]
