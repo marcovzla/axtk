@@ -72,6 +72,29 @@ def seed_worker(worker_id: int):
     set_seed(worker_seed)
 
 
+def to_tensor(
+        x: Any,
+        dtype: Optional[torch.dtype] = None,
+        device: Optional[torch.device] = None,
+) -> torch.Tensor:
+    """
+    Convert the input to a PyTorch tensor if it's not already one.
+
+    Args:
+        x (Any): Input data. Can be any type that is convertible to a PyTorch tensor.
+        dtype (Optional[torch.dtype], optional): The desired data type of the returned tensor.
+            Defaults to None which means infer from the input data.
+        device (Optional[torch.device], optional): The desired device of the returned tensor.
+            Defaults to None which means the current default device.
+
+    Returns:
+        torch.Tensor: The input data as a PyTorch tensor.
+    """
+    if isinstance(x, torch.Tensor):
+        return x
+    return torch.tensor(x, dtype=dtype, device=device)
+
+
 def get_device(module: torch.nn.Module) -> torch.device:
     """
     Retrieves the device on which a PyTorch module is located.

@@ -1,7 +1,9 @@
 import os
-from asyncio import AbstractEventLoop
+import hashlib
 from typing import Any
-from collections.abc import Iterator, Iterable, AsyncIterator
+from collections.abc import Iterator, Iterable
+from pathlib import Path
+from axtk.typing import PathLike
 
 
 def is_namedtuple(obj) -> bool:
@@ -86,24 +88,27 @@ def recursive_flatten(
             yield x
 
 
-def async_to_sync_iterator(ait: AsyncIterator[Any], loop: AbstractEventLoop) -> Iterator[Any]:
+def file_md5_hash(filepath: PathLike, chunk_size: int = 8192) -> str:
     """
-    Convert an asynchronous iterator to a synchronous one using the provided event loop.
-    
+    Calculate the MD5 hash of a given file.
+
     Args:
-        ait (AsyncIterator[Any]): The asynchronous iterator to be converted.
-        loop (asyncio.AbstractEventLoop): The event loop to run the asynchronous tasks.
-        
-    Yields:
-        Any: Values yielded by the asynchronous iterator.
+        filepath (Union[str, Path]): Path to the file for which the MD5 hash needs to be calculated.
+        chunk_size (int, optional): Size of chunks to read from the file for hashing. 
+            Defaults to 8192 bytes (8KB).
+
+    Returns:
+        str: The MD5 hash of the file content.
+
+    Raises:
+        FileNotFoundError: If the specified file does not exist.
     """
-    async def get_next():
-        try:
-            obj = await anext(ait)
-            return False, obj
-        except StopAsyncIteration:
-            return True, None
-    while True:
-        done, obj = loop.run_until_complete(get_next())
-        if done: break
-        yield obj
+    path = Path(filepath)
+    if not path.exists():
+        raise FileNotFoundError(f"File '{path}' not found.")
+    
+    hasher = hashlib.md5()
+    with path.open('rb') as f:
+        for chunk in iter(lambda: f.read(chunk_size), b''):
+            hasher.update(chunk)
+    return hasher.hexdigest()

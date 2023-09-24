@@ -1,19 +1,34 @@
 import sys
 
 
-def is_in_notebook() -> bool:
-    """Returns True if running in a Jupyter Notebook."""
+def running_in_notebook() -> bool:
+    """
+    Determine if the current environment is a Jupyter Notebook.
+
+    Returns:
+        bool: True if running in a Jupyter Notebook, False otherwise.
+
+    Notes:
+        The function checks for the existence of the 'IPython' module 
+        and the presence of 'IPKernelApp' in its configuration to infer
+        if the code is being executed within a Jupyter Notebook.
+    """
     try:
         get_ipython = sys.modules['IPython'].get_ipython
         return 'IPKernelApp' in get_ipython().config
-    except:
+    except KeyError:
+        # 'IPython' not in sys.modules
+        return False
+    except AttributeError:
+        # get_ipython or config not available
         return False
 
 
-def is_in_colab() -> bool:
-    """Returns True if running in Google Colab."""
-    try:
-        import google.colab  # type: ignore
-        return True
-    except:
-        return False
+def running_in_colab() -> bool:
+    """
+    Determine if the current environment is Google Colab.
+
+    Returns:
+        bool: True if running in Google Colab, False otherwise.
+    """
+    return 'google.colab' in sys.modules
