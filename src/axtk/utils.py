@@ -1,6 +1,7 @@
 import os
+from asyncio import AbstractEventLoop
 from typing import Any
-from collections.abc import Iterator, Iterable
+from collections.abc import Iterator, Iterable, AsyncIterator
 
 
 def is_namedtuple(obj) -> bool:
@@ -83,3 +84,26 @@ def recursive_flatten(
                 yield from recursive_flatten(x)
         else:
             yield x
+
+
+def async_to_sync_iterator(ait: AsyncIterator[Any], loop: AbstractEventLoop) -> Iterator[Any]:
+    """
+    Convert an asynchronous iterator to a synchronous one using the provided event loop.
+    
+    Args:
+        ait (AsyncIterator[Any]): The asynchronous iterator to be converted.
+        loop (asyncio.AbstractEventLoop): The event loop to run the asynchronous tasks.
+        
+    Yields:
+        Any: Values yielded by the asynchronous iterator.
+    """
+    async def get_next():
+        try:
+            obj = await anext(ait)
+            return False, obj
+        except StopAsyncIteration:
+            return True, None
+    while True:
+        done, obj = loop.run_until_complete(get_next())
+        if done: break
+        yield obj
