@@ -211,6 +211,76 @@ def integer(
 
 
 
+def floating_point(
+        base: int = 10,
+        radix: str = '[.]',
+        places: Optional[Union[int, tuple[int, int]]] = None,
+        sep: Optional[str] = None,
+        group: Optional[Union[int, tuple[int, int]]] = 3,
+        expon: Optional[str] = '[Ee]',
+        sign: Optional[str] = '[-+]?',
+        return_string: bool = False,
+) -> str | re.Pattern[str]:
+    """
+    Returns a regex pattern that matches floating-point numbers in a specific
+    numeral base with optional formatting.
+
+    Args:
+        base (int, optional): The numeral base for the number. Must be between 2 and 36.
+            Default is 10.
+        radix (str, optional): The character or pattern representing the radix point.
+            Default is '[.]', which matches a dot.
+        places (int or tuple[int, int], optional): Specifies the number of digits after 
+            the radix point. It can be a fixed number or a range. If omitted, it allows 
+            any number of digits after the radix point. Default is None.
+        sep (str, optional): The character used to separate groups of digits in the 
+            pre-radix section of the number. By default, no grouping is assumed. Default is None.
+        group (int or tuple[int, int], optional): The number of digits in each group in the 
+            pre-radix section, either as a fixed number or a range. This is relevant only if `sep`
+            is provided. Default is 3.
+        expon (str or None, optional): The character or pattern used to represent the exponential 
+            part. If set to `None`, no exponential part is allowed in the pattern. Default is '[Ee]', 
+            which matches 'E' or 'e'.
+        sign (str, optional): Regular expression pattern to match the sign of the number or 
+            its exponent. Default is '[-+]?', which matches optional minus or plus signs.
+        return_string (bool, optional): If True, returns the pattern as a string. 
+            If False, returns a compiled regex pattern. Default is False.
+
+    Returns:
+        str | re.Pattern[str]: The regex pattern.
+    """
+
+    # Integral part
+    int_pattern = integer(base=base, sep=sep, group=group, places=None, sign=sign, return_string=True)
+
+    # Get valid characters for the base
+    valid_chars = ''.join(valid_digits_for_base(base))
+
+    # Fractional part
+    if places:
+        if isinstance(places, tuple):
+            frac_pattern = f'{radix}[{valid_chars}]{{{places[0]},{places[1]}}}'
+        else:
+            frac_pattern = f'{radix}[{valid_chars}]{{{places}}}'
+    else:
+        frac_pattern = f'{radix}[{valid_chars}]*'
+
+    # Decimal pattern
+    pattern = f'{sign}(?:{int_pattern}{frac_pattern}?|{frac_pattern})'
+
+    # Exponential part
+    if expon is not None:
+        exponent_pattern = f'{expon}{sign}[{valid_chars}]+'
+        pattern += f'(?:{exponent_pattern})?'
+
+    # Wrap in non-capturing parenthesis
+    pattern = f'(?:{pattern})'
+
+    # Return the pattern either as a string or as a compiled regex
+    return pattern if return_string else re.compile(pattern)
+
+
+
 def valid_digits_for_base(base: int) -> list[str]:
     if not (2 <= base <= 36):
         raise ValueError('Base should be between 2 and 36')
