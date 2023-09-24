@@ -1,5 +1,5 @@
 import re
-from typing import Optional
+from typing import Optional, Union
 
 
 
@@ -145,3 +145,82 @@ def anything_except(
 
     # Return the pattern either as a string or as a compiled regex
     return pattern if return_string else re.compile(pattern)
+
+
+
+def integer(
+        base: int = 10,
+        sep: Optional[str] = None,
+        group: Optional[Union[int, tuple[int, int]]] = 3,
+        places: Optional[Union[int, tuple[int, int]]] = None,
+        sign: Optional[str] = '[-+]?',
+        return_string: bool = False,
+) -> str | re.Pattern[str]:
+    """
+    Returns a regex pattern that matches integers in a specific numeral base
+    with optional formatting.
+
+    Args:
+        base (int, optional): The numeral base for the integer. Must be between 2 and 36.
+            Default is 10.
+        sep (str, optional): The character used to separate groups of digits. Default is None.
+        group (int or tuple[int, int], optional): The number of digits in each group, 
+            either as a fixed number or a range. This is ignored unless `sep` is provided.
+            Default is 3.
+        places (int or tuple[int, int], optional): Specifies the total number of places/digits 
+            the integer should have, either as a fixed number or a range. This is ignored if `sep` 
+            is provided. Default is None.
+        sign (str, optional): Regular expression pattern to match the sign of the integer. 
+            Default is '[-+]?' which matches optional minus or plus signs.
+        return_string (bool, optional): If True, returns the pattern as a string. 
+            If False, returns a compiled regex pattern. Default is False.
+
+    Returns:
+        str | re.Pattern[str]: The regex pattern.
+    """
+    # Get valid characters for the base
+    valid_chars = ''.join(valid_digits_for_base(base))
+
+    # Separator handling
+    if sep:
+        if group is None:
+            core_pattern = f'[{valid_chars}]+(?:[{valid_chars}{sep}]*[{valid_chars}])?'
+        elif isinstance(group, tuple):
+            grp_pattern = f'(?:{sep}([{valid_chars}]{{{group[0]},{group[1]}}})'
+            core_pattern = f'[{valid_chars}]{{1,{group[1]}}}{grp_pattern}*'
+        else:
+            grp_pattern = f'(?:{sep}[{valid_chars}]{{{group}}})'
+            core_pattern = f'[{valid_chars}]{{1,{group}}}{grp_pattern}*'
+    else:
+        if places:
+            if isinstance(places, tuple):
+                core_pattern = f'[{valid_chars}]{{{places[0]},{places[1]}}}'
+            else:
+                core_pattern = f'[{valid_chars}]{{{places}}}'
+        else:
+            core_pattern = f'[{valid_chars}]+'
+
+    # Add sign pattern if required
+    pattern = f'{sign}{core_pattern}' if sign else core_pattern
+
+    # Wrap in non-capturing parenthesis
+    pattern = f'(?:{pattern})'
+
+    # Return the pattern either as a string or as a compiled regex
+    return pattern if return_string else re.compile(pattern)
+
+
+
+def valid_digits_for_base(base: int) -> list[str]:
+    if not (2 <= base <= 36):
+        raise ValueError('Base should be between 2 and 36')
+
+    # Valid digits for bases 2 to 10
+    digits = [str(i) for i in range(base) if i < 10]
+
+    # For bases greater than 10
+    if base > 10:
+        # Using ASCII values for lowercase letters to get the additional valid characters
+        digits += [chr(i) for i in range(ord('a'), ord('a') + (base-10))]
+
+    return digits
