@@ -1,9 +1,14 @@
 import os
 import hashlib
-from typing import Any
-from collections.abc import Iterator, Iterable
+from typing import Any, Optional, TypeVar
+from collections.abc import Iterator, Iterable, Hashable
+from collections import defaultdict
+from operator import itemgetter
 from pathlib import Path
 from axtk.typing import PathLike
+
+
+T = TypeVar('T', bound=Hashable)
 
 
 def is_namedtuple(obj) -> bool:
@@ -16,7 +21,7 @@ def is_pathlike(obj) -> bool:
     return isinstance(obj, (str, os.PathLike))
 
 
-def deduplicate_preserve_order(xs: Iterable[Any]) -> list[Any]:
+def deduplicate_preserve_order(xs: Iterable[T]) -> list[T]:
     """
     Removes duplicate elements from an iterable while preserving their original order.
 
@@ -25,10 +30,10 @@ def deduplicate_preserve_order(xs: Iterable[Any]) -> list[Any]:
     and the order of the remaining elements is preserved.
 
     Args:
-        iterable (Iterable[Any]): The input iterable containing elements to be deduplicated.
+        iterable (Iterable[T]): The input iterable containing elements to be deduplicated.
 
     Returns:
-        list[Any]: A list containing the unique elements from the input iterable in their
+        list[T]: A list containing the unique elements from the input iterable in their
         original order.
 
     Example:
@@ -106,9 +111,50 @@ def file_md5_hash(filepath: PathLike, chunk_size: int = 8192) -> str:
     path = Path(filepath)
     if not path.exists():
         raise FileNotFoundError(f"File '{path}' not found.")
-    
+
     hasher = hashlib.md5()
     with path.open('rb') as f:
         for chunk in iter(lambda: f.read(chunk_size), b''):
             hasher.update(chunk)
     return hasher.hexdigest()
+
+
+def reciprocal_rank_fusion(
+        ranked_lists: list[list[T]],
+        weights: Optional[list[float]] = None,
+        k: float = 60.0,
+) -> tuple[list[T], list[float]]:
+    """
+    Compute Weighted Reciprocal Rank Fusion (WRRF) for multiple ranked lists.
+
+    Args:
+        ranked_lists (list[list[T]]): List of ranked lists containing items of type T.
+        weights (Optional[list[float]]): Weights for each ranked list. Defaults to None,
+            in which case uniform weights are applied.
+        k (float, optional): Constant added to the rank. Default is 60.0.
+
+    Returns:
+        tuple[list[T], list[float]]: A tuple containing two lists:
+            A list of unique items from the input ranked lists sorted in descending order
+            by their WRRF scores, and a list of the corresponding WRRF scores.
+
+    Reference:
+        Cormack, G. V., Clarke, C. L. A., & Buettcher, S. (2009).
+        Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods.
+        SIGIR '09. https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
+    """
+    rrf_scores = defaultdict(float)
+
+    if weights is None:
+        weights = [1.0] * len(ranked_lists)
+    elif len(ranked_lists) != len(weights):
+        raise ValueError('Length of weights must match the number of ranked lists')
+
+    for ranked_list, weight in zip(ranked_lists, weights):
+        for rank, doc_id in enumerate(ranked_list, start=1):
+            rrf_scores[doc_id] += weight / (k + rank)
+
+    sorted_items = sorted(rrf_scores.items(), key=itemgetter(1), reverse=True)
+    items, scores = zip(*sorted_items)
+
+    return list(items), list(scores)
