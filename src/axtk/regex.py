@@ -336,40 +336,6 @@ def floating_point(
 
 
 
-def escape_forward_slashes(s: str) -> str:
-    """
-    Escapes forward slashes in a given string.
-
-    This function escapes each forward slash (/) in the given string, 
-    unless it is already escaped by an odd number of backslashes.
-
-    Args:
-        s (str): The input string to be processed.
-
-    Returns:
-        str: The string with forward slashes appropriately escaped.
-    """
-    return re.sub(r'(?<!(?:\\\\)*\\)/', r'\/', s)
-
-
-
-def unescape_forward_slashes(s: str) -> str:
-    """
-    Unescapes forward slashes in a given string.
-
-    This function unescapes each escaped forward slash (\/) in the given string, 
-    considering if they are preceded by an even number of backslashes.
-
-    Args:
-        s (str): The input string to be processed.
-
-    Returns:
-        str: The string with escaped forward slashes appropriately unescaped.
-    """
-    return re.sub(r'(?<=(?:\\\\)*)\\/', '/', s)
-
-
-
 def valid_digits_for_base(base: int) -> list[str]:
     """
     Generates a list of valid digit characters for a given numeral system base.
