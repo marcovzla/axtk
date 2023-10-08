@@ -321,7 +321,7 @@ def floating_point(
         frac_pattern = f'{radix}[{valid_chars}]*'
 
     # Decimal pattern
-    pattern = f'{sign}(?:{int_pattern}{frac_pattern}?|{frac_pattern})'
+    pattern = f'{sign}(?:{int_pattern}(?:{frac_pattern})?|{frac_pattern})'
 
     # Exponential part
     if expon is not None:
