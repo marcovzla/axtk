@@ -95,60 +95,6 @@ def bracketed_string(
 
 
 
-def balanced_string(
-        open_delimiters: list[str],
-        close_delimiters: list[str],
-) -> str:
-    """
-    Generate a regex pattern for balanced delimiters.
-
-    Given lists of open and close delimiters, this function constructs a regex pattern 
-    that matches strings enclosed by these delimiters. The constructed pattern considers 
-    nested structures. For example, with the delimiters '(' and ')', the pattern will 
-    match both '(abc)' and '(a(b)c)'.
-
-    Parameters:
-    - open_delimiters (list[str]): List of strings representing open delimiters.
-    - close_delimiters (list[str]): List of strings representing close delimiters.
-
-    Returns:
-    - str: The regex pattern string.
-
-    Note:
-    The function assumes that each open delimiter in the list has a corresponding close
-    delimiter at the same index in the close_delimiters list.
-    """
-
-    # Process open delimiters: 
-    # - If it's a word character, wrap it with word boundaries.
-    # - If it's a non-word character, escape it.
-    open_delimiters = [
-        rf'\b{delim}\b' if re.fullmatch(r'\w+', delim) else re.escape(delim)
-        for delim in open_delimiters
-    ]
-
-    # Process close delimiters in a similar way as open delimiters.
-    close_delimiters = [
-        rf'\b{delim}\b' if re.fullmatch(r'\w+', delim) else re.escape(delim)
-        for delim in close_delimiters
-    ]
-
-    # Combine all open and close delimiters into a single regex pattern
-    delimiters = '|'.join(chain(open_delimiters, close_delimiters))
-
-    # Construct patterns for each pair of open and close delimiters
-    patterns = [
-        f'{open_delim}(?:(?!{delimiters}).|(?&group))*{close_delim}'
-        for open_delim, close_delim in zip(open_delimiters, close_delimiters)
-    ]
-
-    # Combine all individual patterns into a single pattern
-    pattern = '(?<group>' + '|'.join(patterns) + ')'
-
-    return pattern
-
-
-
 def anything_except(
         *args: str,
         escape_args: bool = True,
