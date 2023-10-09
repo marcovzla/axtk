@@ -1,5 +1,4 @@
 import re
-from itertools import chain
 from typing import Optional, Union
 
 
