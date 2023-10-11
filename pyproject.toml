@@ -2,8 +2,10 @@
 name = "axtk"
 version = "0.1.0"
 dependencies = [
-    "torch",
-    "torchvision",
-    "anyascii",
     "tqdm",
+    "torch",
+    "anyascii",
+    "pydantic",
+    "torchvision",
+    "docstring_parser",
 ]
