@@ -1,5 +1,6 @@
-import re
 from typing import Optional, Union
+import re
+import regex
 
 
 
@@ -8,7 +9,7 @@ def delimited_string(
         close_delimiters: Optional[str] = None,
         escape_chars: Optional[str] = '\\',
         return_string: bool = False,
-) -> str | re.Pattern[str]:
+) -> str | regex.Pattern[str]:
     """
     Create a regex pattern to capture strings between matching delimiters.
 
@@ -19,7 +20,7 @@ def delimited_string(
         return_string (bool): If True, returns the regex pattern as a string; else, a compiled regex.
 
     Returns:
-        str | regex.Pattern: The regex pattern.
+        str | regex.Pattern[str]: The regex pattern.
     """
     
     # Ensure we have at least one delimiter
@@ -44,12 +45,12 @@ def delimited_string(
     # Construct patterns
     patterns = []
     for i in range(len(delimiters)):
-        open_delim = re.escape(delimiters[i])
-        close_delim = re.escape(close_delimiters[i])
+        open_delim = regex.escape(delimiters[i])
+        close_delim = regex.escape(close_delimiters[i])
         if escape_chars is None:
             pattern = f'{open_delim}[^{close_delim}]*{close_delim}'
         else:
-            esc_char = re.escape(escape_chars[i])
+            esc_char = regex.escape(escape_chars[i])
             if esc_char == close_delim:
                 pattern = f'{open_delim}[^{close_delim}]*(?:{close_delim}{close_delim}[^{close_delim}]*)*{close_delim}'
             else:
@@ -60,7 +61,7 @@ def delimited_string(
     pattern = '(?:' + '|'.join(patterns) + ')'
 
     # Return the pattern either as a string or as a compiled regex
-    return pattern if return_string else re.compile(pattern)
+    return pattern if return_string else regex.compile(pattern)
 
 
 
@@ -68,7 +69,7 @@ def bracketed_string(
         brackets: str,
         escape_chars: Optional[str] = '\\',
         return_string: bool = False,
-) -> str | re.Pattern[str]:
+) -> str | regex.Pattern[str]:
     """
     Create a regex pattern to capture strings between matching brackets.
 
@@ -78,7 +79,7 @@ def bracketed_string(
         return_string (bool): If True, returns the regex pattern as a string; else, a compiled regex.
 
     Returns:
-        str | regex.Pattern: The regex pattern.
+        str | regex.Pattern[str]: The regex pattern.
     """
     
     # Ensure the provided brackets string contains even number of characters (pairs)
@@ -101,7 +102,7 @@ def anything_except(
         allow_newline: bool = False,
         allow_empty_match: bool = False,
         return_string: bool = False,
-) -> str | re.Pattern[str]:
+) -> str | regex.Pattern[str]:
     """
     Returns a regex pattern that matches any string except the provided arguments.
 
@@ -114,7 +115,7 @@ def anything_except(
         return_string (bool): If True, returns the regex pattern as a string; else, a compiled regex.
 
     Returns:
-        str | regex.Pattern: The regex pattern.
+        str | regex.Pattern[str]: The regex pattern.
     """
 
     # Check for invalid combination of arguments
@@ -123,7 +124,7 @@ def anything_except(
 
     # Escape regex metacharacters if needed
     if escape_args:
-        args = [re.escape(arg) for arg in args]
+        args = [regex.escape(arg) for arg in args]
 
     # Create negative lookahead for arguments to exclude
     negative_lookahead = '|'.join(f'(?:{arg})' for arg in args)
@@ -144,7 +145,7 @@ def anything_except(
     pattern = f'(?:{pattern})'
 
     # Return the pattern either as a string or as a compiled regex
-    return pattern if return_string else re.compile(pattern)
+    return pattern if return_string else regex.compile(pattern)
 
 
 
@@ -155,7 +156,7 @@ def integer(
         places: Optional[Union[int, tuple[int, int]]] = None,
         sign: Optional[str] = '[-+]?',
         return_string: bool = False,
-) -> str | re.Pattern[str]:
+) -> str | regex.Pattern[str]:
     """
     Returns a regex pattern that matches integers in a specific numeral base
     with optional formatting.
@@ -176,7 +177,7 @@ def integer(
             If False, returns a compiled regex pattern. Default is False.
 
     Returns:
-        str | re.Pattern[str]: The regex pattern.
+        str | regex.Pattern[str]: The regex pattern.
     """
     # Get valid characters for the base
     valid_chars = ''.join(valid_digits_for_base(base))
@@ -207,7 +208,7 @@ def integer(
     pattern = f'(?:{pattern})'
 
     # Return the pattern either as a string or as a compiled regex
-    return pattern if return_string else re.compile(pattern)
+    return pattern if return_string else regex.compile(pattern)
 
 
 
@@ -220,7 +221,7 @@ def floating_point(
         expon: Optional[str] = '[Ee]',
         sign: Optional[str] = '[-+]?',
         return_string: bool = False,
-) -> str | re.Pattern[str]:
+) -> str | regex.Pattern[str]:
     """
     Returns a regex pattern that matches floating-point numbers in a specific
     numeral base with optional formatting.
@@ -247,7 +248,7 @@ def floating_point(
             If False, returns a compiled regex pattern. Default is False.
 
     Returns:
-        str | re.Pattern[str]: The regex pattern.
+        str | regex.Pattern[str]: The regex pattern.
     """
 
     # Integral part
@@ -277,7 +278,7 @@ def floating_point(
     pattern = f'(?:{pattern})'
 
     # Return the pattern either as a string or as a compiled regex
-    return pattern if return_string else re.compile(pattern)
+    return pattern if return_string else regex.compile(pattern)
 
 
 
@@ -311,3 +312,89 @@ def valid_digits_for_base(base: int) -> list[str]:
         digits += [chr(i) for i in range(ord('a'), ord('a') + (base-10))]
 
     return digits
+
+
+
+REGEX_LITERAL_PATTERN: regex.Pattern[str] = delimited_string('/')
+"""Pattern that matches strings delimited by forward slashes."""
+
+
+
+def get_pattern_from_regex_literal(
+        string: str,
+        return_string: bool = False,
+) -> str | regex.Pattern[str]:
+    """
+    Extracts the inner pattern from a regex literal.
+    
+    This function assumes that a regex literal starts and ends with a forward slash (/).
+    It extracts the inner pattern and unescapes forward slashes.
+    
+    Args:
+        string (str): The regex literal to be processed.
+        return_string (bool, optional): If True, returns the pattern as a string. 
+            If False, returns a compiled regex pattern. Default is False.
+        
+    Returns:
+        str: The extracted regex pattern with unescaped forward slashes.
+        
+    Raises:
+        ValueError: If the input string doesn't meet the criteria for being a regex literal.
+    """
+    if not REGEX_LITERAL_PATTERN.fullmatch(string):
+        raise ValueError(f'Invalid Regex literal: {string}')
+    pattern = unescape_forward_slashes(string[1:-1])
+    return pattern if return_string else regex.compile(pattern)
+
+
+
+def get_regex_literal_from_pattern(pattern: str | re.Pattern[str] | regex.Pattern[str]) -> str:
+    """
+    Converts a regex pattern to its regex literal representation.
+
+    Args:
+        pattern (str | re.Pattern[str] | regex.Pattern[str]): The pattern to be converted to a regex literal.
+
+    Returns:
+        str: The regex literal representation of the pattern.
+    """
+    if not isinstance(pattern, str):
+        pattern = pattern.pattern
+    pattern = escape_forward_slashes(pattern)
+    return f'/{pattern}/'
+
+
+
+def escape_forward_slashes(string: str) -> str:
+    """
+    Escapes forward slashes in a given string.
+
+    This function escapes each forward slash (/) in the given string, 
+    unless it is already escaped by an odd number of backslashes.
+
+    Args:
+        string (str): The input string to be processed.
+
+    Returns:
+        str | regex.Pattern[str]: The string with forward slashes appropriately escaped.
+    """
+    # Use regex to find non-escaped forward slashes and escape them
+    return regex.sub(r'(?<!(?:\\\\)*\\)/', r'\/', string)
+
+
+
+def unescape_forward_slashes(string: str) -> str:
+    """
+    Unescapes forward slashes in a given string.
+
+    This function unescapes each escaped forward slash (\/) in the given string, 
+    considering if they are preceded by an even number of backslashes.
+
+    Args:
+        string (str): The input string to be processed.
+
+    Returns:
+        str: The string with escaped forward slashes appropriately unescaped.
+    """
+    # Use regex to find escaped forward slashes and unescape them
+    return regex.sub(r'(?<=(?:\\\\)*)\\/', '/', string)
