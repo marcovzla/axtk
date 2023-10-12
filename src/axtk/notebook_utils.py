@@ -1,34 +1,29 @@
-import sys
+from collections.abc import Iterable
+from ftfy import fix_text
+from IPython.display import display, Markdown
+from axtk import running_in_notebook, running_in_colab
 
 
-def running_in_notebook() -> bool:
+def display_markdown(text: str):
     """
-    Determine if the current environment is a Jupyter Notebook.
+    Display Markdown-formatted text in a Jupyter notebook.
 
-    Returns:
-        bool: True if running in a Jupyter Notebook, False otherwise.
-
-    Notes:
-        The function checks for the existence of the 'IPython' module 
-        and the presence of 'IPKernelApp' in its configuration to infer
-        if the code is being executed within a Jupyter Notebook.
+    Args:
+        text (str): The text to be displayed as Markdown.
     """
-    try:
-        get_ipython = sys.modules['IPython'].get_ipython
-        return 'IPKernelApp' in get_ipython().config
-    except KeyError:
-        # 'IPython' not in sys.modules
-        return False
-    except AttributeError:
-        # get_ipython or config not available
-        return False
+    display(Markdown(fix_text(text)))
 
 
-def running_in_colab() -> bool:
+def display_markdown_stream(stream: Iterable[str]):
     """
-    Determine if the current environment is Google Colab.
+    Display a stream of Markdown-formatted text chunks in a Jupyter notebook.
 
-    Returns:
-        bool: True if running in Google Colab, False otherwise.
+    Args:
+        stream (Iterable[str]): An iterable providing chunks of text to display.
     """
-    return 'google.colab' in sys.modules
+    text = ''
+    handle = display(Markdown(text), display_id=True)
+
+    for chunk in stream:
+        text += chunk
+        handle.update(Markdown(fix_text(text)))
