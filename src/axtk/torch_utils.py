@@ -1,11 +1,13 @@
 import math
 import dataclasses
 from numbers import Number
+from types import FunctionType, MethodType
 from collections.abc import MutableMapping, MutableSequence
-from typing import Any, Optional, Literal, Union
+from typing import Any, Optional, Literal, Union, cast
 import torch
 from axtk import set_seed, enable_full_determinism
 from axtk.utils import is_namedtuple
+from axtk.typing import F
 from axtk.average import ExponentialMovingAverage
 
 
@@ -502,3 +504,40 @@ def relative_positions(
         relative_matrix = relative_matrix + max_distance
 
     return relative_matrix
+
+
+def remove_no_grad_decorator(f: F) -> F:
+    """
+    Removes 'torch.no_grad()' decorator from a given function or method.
+    
+    Args:
+        f (F): The function or method decorated with `torch.no_grad()`.
+
+    Returns:
+        F: The original undecorated function or method.
+
+    Raises:
+        TypeError: If the closure is None, not structured as expected, or the argument type is invalid.
+    """
+
+    # Check if closure is None, which usually indicates that the function is not decorated
+    if f.__closure__ is None:
+        raise TypeError('Closure is None. This usually means the function is not decorated with `torch.no_grad()`.')
+
+    # Check if closure is structured as expected for a `torch.no_grad()` decorated function
+    elif len(f.__closure__) != 2:
+        raise TypeError('Closure is not structured as expected. Check if the function is correctly decorated.')
+
+    # Handling the case of a function
+    elif isinstance(f, FunctionType):
+        func = f.__closure__[1].cell_contents
+        return cast(F, func)
+
+    # Handling the case of a method
+    elif isinstance(f, MethodType):
+        obj = f.__self__
+        func = f.__closure__[1].cell_contents
+        return cast(F, MethodType(func, obj))
+
+    else:
+        raise TypeError('Invalid argument type. Expected a function or method decorated with `torch.no_grad()`.')
