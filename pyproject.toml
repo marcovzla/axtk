@@ -3,6 +3,7 @@ name = "axtk"
 version = "0.1.0"
 dependencies = [
     "ftfy",
+    "lark",
     "tqdm",
     "regex",
     "torch",
