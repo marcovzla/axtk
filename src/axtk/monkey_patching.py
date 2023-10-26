@@ -1,65 +1,33 @@
 from types import FunctionType, MethodType
-from typing import Any, Optional, Union
+from typing import Any, Optional, cast
 from functools import update_wrapper
+from axtk.typing import F
 
 
-FunctionOrMethod = Union[FunctionType, MethodType]
-
-
-def copy_function(f: FunctionType) -> FunctionType:
+def patch_object(
+        obj: Any,
+        f: F,
+        f_name: Optional[str] = None,
+):
     """
-    Create a copy of a function.
+    Patch an object by adding or replacing a method.
 
     Args:
-        f (FunctionType): The function to copy.
-
-    Returns:
-        FunctionType: A copy of the input function.
+        obj (Any): The object to patch.
+        f (F): The function or method to add or replace.
+        f_name (str, optional): The name to use for the patched method. Defaults to None (uses the original name).
     """
-    f_copy = FunctionType(f.__code__, f.__globals__, f.__name__, f.__defaults__, f.__closure__)
-    f_copy.__kwdefaults__ = f.__kwdefaults__
-    return update_wrapper(f_copy, f)
-
-
-def wrap_method(m: MethodType) -> FunctionType:
-    """
-    Wrap a bound method in a function that can be used for monkeypatching.
-
-    Args:
-        m (MethodType): The bound method to wrap.
-
-    Returns:
-        FunctionType: A wrapped function that can be used for monkeypatching.
-    """
-    def f(obj, *args, **kwargs):
-        return m(obj, *args, **kwargs)
-    return f
-
-
-def copy_or_wrap(f: FunctionOrMethod) -> FunctionType:
-    """
-    Copy or wrap a function or method depending on its type.
-
-    Args:
-        f (FunctionOrMethod): The function or method to copy or wrap.
-
-    Returns:
-        FunctionType: A copy of the input function if it's a function, or a wrapped function if it's a method.
-    
-    Raises:
-        TypeError: If the input is not a function or method.
-    """
-    if isinstance(f, FunctionType):
-        return copy_function(f)
-    elif isinstance(f, MethodType):
-        return wrap_method(f)
-    else:
-        raise TypeError('Input must be a function or a method')
+    if f_name is None:
+        f_name = f.__name__
+    c_name = type(obj).__name__
+    f_copy = copy_or_wrap(f)
+    f_copy.__qualname__ = f'{c_name}.{f_name}'
+    setattr(obj, f_name, MethodType(f_copy, obj))
 
 
 def patch_class(
         cls: type,
-        f: FunctionOrMethod,
+        f: F,
         f_name: Optional[str] = None,
         as_classmethod: bool = False,
         as_property: bool = False,
@@ -69,7 +37,7 @@ def patch_class(
 
     Args:
         cls (type): The class to patch.
-        f (FunctionOrMethod): The function or method to add or replace.
+        f (F): The function or method to add or replace.
         f_name (str, optional): The name to use for the patched method. Defaults to None (uses the original name).
         as_classmethod (bool, optional): If True, add the method as a class method. Defaults to False.
         as_property (bool, optional): If True, add the method as a property. Defaults to False.
@@ -92,45 +60,7 @@ def patch_class(
         setattr(cls, f_name, f_copy)
 
 
-def patch_object(
-        obj: Any,
-        f: FunctionOrMethod,
-        f_name: Optional[str] = None,
-):
-    """
-    Patch an object by adding or replacing a method.
-
-    Args:
-        obj (Any): The object to patch.
-        f (FunctionOrMethod): The function or method to add or replace.
-        f_name (str, optional): The name to use for the patched method. Defaults to None (uses the original name).
-    """
-    if f_name is None:
-        f_name = f.__name__
-    c_name = type(obj).__name__
-    f_copy = copy_or_wrap(f)
-    f_copy.__qualname__ = f'{c_name}.{f_name}'
-    setattr(obj, f_name, MethodType(f_copy, obj))
-
-
-class MonkeyPatchedDunderMethods:
-    """A base class for objects with monkey-patched dunder methods."""
-
-
-def has_patched_dunder_methods(obj: Any) -> bool:
-    """
-    Check if an object has monkey-patched dunder methods.
-
-    Parameters:
-        obj (Any): The object to check.
-
-    Returns:
-        bool: True if the object has monkey-patched dunder methods, False otherwise.
-    """
-    return isinstance(obj, MonkeyPatchedDunderMethods)
-
-
-def patch_dunder_methods(obj: Any, **kwargs: FunctionOrMethod):
+def patch_dunder_methods(obj: Any, **kwargs: F):
     """
     Patch the dunder methods of an object with provided functions.
 
@@ -167,3 +97,71 @@ def restore_dunder_methods(obj: Any, recursive_restore: bool = False):
         obj.__class__ = obj.__class__.__base__
         if not recursive_restore:
             break
+
+
+class MonkeyPatchedDunderMethods:
+    """A base class for objects with monkey-patched dunder methods."""
+
+
+def has_patched_dunder_methods(obj: Any) -> bool:
+    """
+    Check if an object has monkey-patched dunder methods.
+
+    Parameters:
+        obj (Any): The object to check.
+
+    Returns:
+        bool: True if the object has monkey-patched dunder methods, False otherwise.
+    """
+    return isinstance(obj, MonkeyPatchedDunderMethods)
+
+
+def copy_or_wrap(f: F) -> F:
+    """
+    Copy or wrap a function or method depending on its type.
+
+    Args:
+        f (F): The function or method to copy or wrap.
+
+    Returns:
+        F: A copy of the input function if it's a function, or a wrapped function if it's a method.
+    
+    Raises:
+        TypeError: If the input is not a function or method.
+    """
+    if isinstance(f, FunctionType):
+        return cast(F, copy_function(f))
+    elif isinstance(f, MethodType):
+        return cast(F, wrap_method(f))
+    else:
+        raise TypeError('Input must be a function or a method')
+
+
+def copy_function(f: FunctionType) -> FunctionType:
+    """
+    Create a copy of a function.
+
+    Args:
+        f (FunctionType): The function to copy.
+
+    Returns:
+        FunctionType: A copy of the input function.
+    """
+    f_copy = FunctionType(f.__code__, f.__globals__, f.__name__, f.__defaults__, f.__closure__)
+    f_copy.__kwdefaults__ = f.__kwdefaults__
+    return update_wrapper(f_copy, f)
+
+
+def wrap_method(m: MethodType) -> FunctionType:
+    """
+    Wrap a bound method in a function that can be used for monkeypatching.
+
+    Args:
+        m (MethodType): The bound method to wrap.
+
+    Returns:
+        FunctionType: A wrapped function that can be used for monkeypatching.
+    """
+    def f(obj, *args, **kwargs):
+        return m(obj, *args, **kwargs)
+    return f
