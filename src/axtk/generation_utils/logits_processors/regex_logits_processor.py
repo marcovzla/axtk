@@ -1,3 +1,4 @@
+from typing import Union
 import regex
 import torch
 from axtk.generation_utils.logits_processors.acceptable_logits_processor import AcceptableLogitsProcessor
@@ -7,7 +8,7 @@ class RegexLogitsProcessor(AcceptableLogitsProcessor):
     def __init__(
             self,
             pattern: str,
-            stop_regex: str | list[str],
+            stop_regex: Union[str, list[str]],
             **kwargs,
     ):
         super().__init__(**kwargs)

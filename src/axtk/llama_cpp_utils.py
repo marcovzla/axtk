@@ -1,4 +1,5 @@
 import re
+from typing import Union
 from axtk.generation_utils.tokenizer import HuggingFaceLikeTokenizer
 
 try:
@@ -77,13 +78,13 @@ class LlamaCppTokenizer(HuggingFaceLikeTokenizer):
     def decode(self, ids: list[int], skip_special_tokens: bool = False, **kwargs) -> str:
         return self._tokens_to_string(ids, skip_special_tokens)
 
-    def convert_ids_to_tokens(self, ids: int | list[int]) -> str | list[str]:
+    def convert_ids_to_tokens(self, ids: Union[int, list[int]]) -> Union[str, list[str]]:
         if isinstance(ids, int):
             return self._id_to_token(ids)
         else:
             return [self._id_to_token(id) for id in ids]
 
-    def convert_tokens_to_ids(self, tokens: str | list[str]) -> int | list[int]:
+    def convert_tokens_to_ids(self, tokens: Union[str, list[str]]) -> Union[int, list[int]]:
         if isinstance(tokens, str):
             return self.token_ids[tokens]
         else:
@@ -98,10 +99,10 @@ class LlamaCppTokenizer(HuggingFaceLikeTokenizer):
     def _id_to_token_type(self, id: int) -> int:
         return llama_cpp.llama_token_get_type(self.llama.ctx, id)
 
-    def _tokens_to_string(self, tokens: list[str | int], skip_special_tokens: bool = False) -> str:
+    def _tokens_to_string(self, tokens: list[Union[str, int]], skip_special_tokens: bool = False) -> str:
         return ''.join(self._token_to_piece(t, skip_special_tokens) for t in tokens)
 
-    def _token_to_piece(self, token: str | int, skip_special_tokens: bool) -> str:
+    def _token_to_piece(self, token: Union[str, int], skip_special_tokens: bool) -> str:
         # get token and token id
         if isinstance(token, str):
             token_id = self.token_ids[token]

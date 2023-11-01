@@ -59,7 +59,7 @@ def get_device(module: torch.nn.Module) -> torch.device:
     return next(module.parameters()).device
 
 
-def move_to_device(obj: Any, device: str | torch.device):
+def move_to_device(obj: Any, device: Union[str, torch.device]):
     """
     Recursively moves tensors within containers to the specified device.
 

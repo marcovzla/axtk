@@ -9,7 +9,7 @@ def delimited_string(
         close_delimiters: Optional[str] = None,
         escape_chars: Optional[str] = '\\',
         return_string: bool = False,
-) -> str | regex.Pattern[str]:
+) -> Union[str, regex.Pattern[str]]:
     """
     Create a regex pattern to capture strings between matching delimiters.
 
@@ -69,7 +69,7 @@ def bracketed_string(
         brackets: str,
         escape_chars: Optional[str] = '\\',
         return_string: bool = False,
-) -> str | regex.Pattern[str]:
+) -> Union[str, regex.Pattern[str]]:
     """
     Create a regex pattern to capture strings between matching brackets.
 
@@ -102,7 +102,7 @@ def anything_except(
         allow_newline: bool = False,
         allow_empty_match: bool = False,
         return_string: bool = False,
-) -> str | regex.Pattern[str]:
+) -> Union[str, regex.Pattern[str]]:
     """
     Returns a regex pattern that matches any string except the provided arguments.
 
@@ -156,7 +156,7 @@ def integer(
         places: Optional[Union[int, tuple[int, int]]] = None,
         sign: Optional[str] = '[-+]?',
         return_string: bool = False,
-) -> str | regex.Pattern[str]:
+) -> Union[str, regex.Pattern[str]]:
     """
     Returns a regex pattern that matches integers in a specific numeral base
     with optional formatting.
@@ -221,7 +221,7 @@ def floating_point(
         expon: Optional[str] = '[Ee]',
         sign: Optional[str] = '[-+]?',
         return_string: bool = False,
-) -> str | regex.Pattern[str]:
+) -> Union[str, regex.Pattern[str]]:
     """
     Returns a regex pattern that matches floating-point numbers in a specific
     numeral base with optional formatting.
@@ -323,7 +323,7 @@ REGEX_LITERAL_PATTERN: regex.Pattern[str] = delimited_string('/')
 def get_pattern_from_regex_literal(
         string: str,
         return_string: bool = False,
-) -> str | regex.Pattern[str]:
+) -> Union[str, regex.Pattern[str]]:
     """
     Extracts the inner pattern from a regex literal.
     
@@ -348,7 +348,7 @@ def get_pattern_from_regex_literal(
 
 
 
-def get_regex_literal_from_pattern(pattern: str | re.Pattern[str] | regex.Pattern[str]) -> str:
+def get_regex_literal_from_pattern(pattern: Union[str, re.Pattern[str], regex.Pattern[str]]) -> str:
     """
     Converts a regex pattern to its regex literal representation.
 

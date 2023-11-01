@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from collections.abc import Iterable
 from dataclasses import dataclass
 from axtk.utils import deduplicate_preserve_order
@@ -22,7 +22,7 @@ class Vocabulary:
     def __iter__(self):
         return iter(self.id2label.items())
 
-    def __contains__(self, value: str | int):
+    def __contains__(self, value: Union[str, int]):
         if isinstance(value, str):
             return value in self.label2id
         elif isinstance(value, int):
@@ -30,7 +30,7 @@ class Vocabulary:
         else:
             raise TypeError('value must be int or str')
 
-    def __getitem__(self, key: str | int):
+    def __getitem__(self, key: Union[str, int]):
         if isinstance(key, str):
             if key not in self.label2id:
                 raise KeyError('label not in vocabulary')

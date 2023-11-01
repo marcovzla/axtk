@@ -2,7 +2,7 @@ from __future__ import annotations
 from ast import literal_eval
 from collections import defaultdict
 from collections.abc import Iterable
-from typing import Optional
+from typing import Optional, Union
 import regex
 from lark import Lark, Transformer, v_args, Discard
 from axtk.regex_utils import delimited_string, get_pattern_from_regex_literal
@@ -482,7 +482,7 @@ epsilon = Epsilon()
 end_of_input = EndOfInput()
 
 # type alias
-AstNode = Symbol | Concatenation | Disjunction | ZeroOrOne | ZeroOrMore | OneOrMore
+AstNode = Union[Symbol, Concatenation, Disjunction, ZeroOrOne, ZeroOrMore, OneOrMore]
 
 
 
