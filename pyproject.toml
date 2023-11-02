@@ -9,6 +9,7 @@ dependencies = [
     "torch",
     "anyascii",
     "pydantic",
+    "pygtrie",
     "torchvision",
     "docstring_parser",
 ]
