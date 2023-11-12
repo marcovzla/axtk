@@ -1,5 +1,5 @@
-from typing import Any, Optional
-from collections.abc import Callable, Iterable
+from typing import Any, Optional, TypeVar, Generic
+from collections.abc import Callable, Iterable, Iterator
 from torch import Tensor
 from torch.nn import Module
 from torch.utils.hooks import RemovableHandle
@@ -36,47 +36,48 @@ class Hook:
         """Returns True if hook is currently registered."""
         return self._registered
 
-    def register_hook(self):
+    def register_hook(self) -> None:
         """Register hook."""
         if self.is_registered:
             raise Exception('hook is already registered')
         self._registered = True
 
-    def unregister_hook(self):
+    def unregister_hook(self) -> None:
         """Unregister hook."""
         if not self.is_registered:
             raise Exception('hook is not currently registered')
         self._registered = False
 
 
-class HookManager(Hook):
-    def __init__(self, hooks: Optional[Iterable[Hook]] = None):
+H = TypeVar('H', bound=Hook)
+
+class HookManager(Hook, Generic[H]):
+    def __init__(self, hooks: Optional[Iterable[H]] = None):
         super().__init__()
-        self._hooks: list[Hook] = []
         self.hooks = hooks
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.hooks)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[H]:
         return iter(self.hooks)
 
     @property
-    def hooks(self) -> list[Hook]:
+    def hooks(self) -> list[H]:
         return self._hooks
 
     @hooks.setter
-    def hooks(self, hooks: Optional[Iterable[Hook]]):
+    def hooks(self, hooks: Optional[Iterable[H]]):
         if self.is_registered:
             raise Exception('cannot swap hooks while manager is registered')
         self._hooks = [] if hooks is None else list(hooks)
 
-    def register_hook(self):
+    def register_hook(self) -> None:
         super().register_hook()
         for hook in self.hooks:
             hook.register_hook()
 
-    def unregister_hook(self):
+    def unregister_hook(self) -> None:
         super().unregister_hook()
         for hook in self.hooks:
             hook.unregister_hook()
@@ -87,7 +88,7 @@ class TorchHook(Hook):
         super().__init__()
         self.handle: Optional[RemovableHandle] = None
 
-    def unregister_hook(self):
+    def unregister_hook(self) -> None:
         super().unregister_hook()
         self.handle.remove()
         self.handle = None
@@ -103,14 +104,14 @@ class TensorHook(TorchHook):
         self.tensor = tensor
         self._hook_function = hook_function
 
-    def register_hook(self):
+    def register_hook(self) -> None:
         super().register_hook()
         self.handle = self.tensor.register_hook(self.hook_function)
 
     def hook_function(self, tensor: Tensor) -> Optional[Tensor]:
         if self._hook_function is not None:
             return self._hook_function(self, tensor)
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class ModuleForwardHook(TorchHook):
@@ -125,7 +126,7 @@ class ModuleForwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
-    def register_hook(self):
+    def register_hook(self) -> None:
         super().register_hook()
         self.handle = self.module.register_forward_hook(
             hook=self.hook_function,
@@ -142,7 +143,7 @@ class ModuleForwardHook(TorchHook):
     ) -> Optional[Any]:
         if self._hook_function is not None:
             return self._hook_function(self, module, args, kwargs, output)
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class ModulePreForwardHook(TorchHook):
@@ -157,7 +158,7 @@ class ModulePreForwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
-    def register_hook(self):
+    def register_hook(self) -> None:
         super().register_hook()
         self.handle = self.module.register_forward_pre_hook(
             hook=self.hook_function,
@@ -173,7 +174,7 @@ class ModulePreForwardHook(TorchHook):
     ) -> Optional[tuple[Any, dict[str, Any]]]:
         if self._hook_function is not None:
             return self._hook_function(self, module, args, kwargs)
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class ModuleBackwardHook(TorchHook):
@@ -188,7 +189,7 @@ class ModuleBackwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
-    def register_hook(self):
+    def register_hook(self) -> None:
         super().register_hook()
         self.handle = self.module.register_full_backward_hook(
             hook=self.hook_function,
@@ -203,7 +204,7 @@ class ModuleBackwardHook(TorchHook):
     ) -> Optional[tuple[Tensor]]:
         if self._hook_function is not None:
             return self._hook_function(self, module, grad_input, grad_output)
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 class ModulePreBackwardHook(TorchHook):
@@ -218,7 +219,7 @@ class ModulePreBackwardHook(TorchHook):
         self._hook_function = hook_function
         self.prepend = prepend
 
-    def register_hook(self):
+    def register_hook(self) -> None:
         super().register_hook()
         self.handle = self.module.register_full_backward_pre_hook(
             hook=self.hook_function,
@@ -232,4 +233,4 @@ class ModulePreBackwardHook(TorchHook):
     ) -> Optional[Tensor]:
         if self._hook_function is not None:
             return self._hook_function(self, module, grad_output)
-        raise NotImplementedError
+        raise NotImplementedError()
