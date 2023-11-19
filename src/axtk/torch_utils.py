@@ -5,9 +5,10 @@ from types import FunctionType, MethodType
 from collections.abc import MutableMapping, MutableSequence
 from typing import Any, Optional, Literal, Union, cast
 import torch
+import numpy as np
 from axtk import set_seed, enable_full_determinism
 from axtk.utils import is_namedtuple
-from axtk.typing import F
+from axtk.typing import F, N
 from axtk.average import ExponentialMovingAverage
 
 
@@ -41,6 +42,45 @@ def to_tensor(
     if isinstance(x, torch.Tensor):
         return x
     return torch.tensor(x, dtype=dtype, device=device)
+
+
+def to_list(x: Union[N, list[N], np.ndarray, torch.Tensor]) -> list[N]:
+    """
+    Converts a given input to a list of numbers. The input can be a single
+    number, a list of numbers, a NumPy ndarray, or a PyTorch tensor. If the
+    input is already a list, it is returned as is.
+
+    Args:
+        x (Union[N, list[N], np.ndarray, torch.Tensor]): The input to convert.
+            Can be a single number (N), a list of numbers (list[N]), a NumPy
+            ndarray, or a PyTorch tensor.
+
+    Returns:
+        list[N]: A list of numbers converted from the input.
+
+    Raises:
+        TypeError: If the input type is not supported.
+
+    Examples:
+        >>> to_list(5)
+        [5]
+        >>> to_list([1, 2, 3])
+        [1, 2, 3]
+        >>> to_list(np.array([1, 2, 3]))
+        [1, 2, 3]
+        >>> to_list(torch.tensor([1, 2, 3]))
+        [1, 2, 3]
+    """
+    if isinstance(x, Number):
+        return [x]
+    elif isinstance(x, list):
+        return x
+    elif isinstance(x, np.ndarray):
+        return x.tolist()
+    elif isinstance(x, torch.Tensor):
+        return x.tolist()
+    else:
+        raise TypeError(f'Invalid type: {x.__class__.__name__}')
 
 
 def get_device(module: torch.nn.Module) -> torch.device:
