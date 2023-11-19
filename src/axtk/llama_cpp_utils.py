@@ -1,5 +1,8 @@
 import re
 from typing import Union
+import numpy as np
+import torch
+from axtk.torch_utils import to_list
 from axtk.generation_utils.tokenizer import HuggingFaceLikeTokenizer
 
 try:
@@ -17,6 +20,11 @@ ENCODING = 'utf-8'
 
 SENTENCEPIECE_WHITESPACE = b'\xe2\x96\x81'.decode(ENCODING)
 
+SPECIAL_TOKEN_TYPE = {
+    llama_cpp.LLAMA_TOKEN_TYPE_CONTROL,
+    llama_cpp.LLAMA_TOKEN_TYPE_UNKNOWN,
+}
+
 
 
 def llama_unescape_whitespace(s: str) -> str:
@@ -30,12 +38,12 @@ def llama_parse_byte_token(token: str) -> str:
 class LlamaCppTokenizer(HuggingFaceLikeTokenizer):
     """Simulates a HuggingFace tokenizer for llama_cpp models."""
 
-    def __init__(self, model: llama_cpp.Llama):
-        self.llama = model
-        self.vocab_type = llama_cpp.llama_vocab_type(self.llama.ctx)
-        self.vocab_size = llama_cpp.llama_n_vocab(self.llama.ctx)
-        self.bos_token_id = llama_cpp.llama_token_bos(self.llama.ctx)
-        self.eos_token_id = llama_cpp.llama_token_eos(self.llama.ctx)
+    def __init__(self, llama: llama_cpp.Llama):
+        self.llama = llama
+        self.vocab_type = llama_cpp.llama_vocab_type(self.llama.model)
+        self.vocab_size = llama_cpp.llama_n_vocab(self.llama.model)
+        self.bos_token_id = llama_cpp.llama_token_bos(self.llama.model)
+        self.eos_token_id = llama_cpp.llama_token_eos(self.llama.model)
         self.bos_token = self._id_to_token(self.bos_token_id)
         self.eos_token = self._id_to_token(self.eos_token_id)
 
@@ -47,14 +55,18 @@ class LlamaCppTokenizer(HuggingFaceLikeTokenizer):
         special_tokens_patterns = [
             re.escape(self._id_to_token(i))
             for i in range(self.vocab_size)
-            if self._id_to_token_type(i) in (llama_cpp.LLAMA_TOKEN_TYPE_CONTROL, llama_cpp.LLAMA_TOKEN_TYPE_UNKNOWN)
+            if self._id_to_token_type(i) in SPECIAL_TOKEN_TYPE
         ]
 
         # note the capturing parenthesis, they are needed so that split() returns the separators,
         # which correspond to special tokens
         self.special_token_pattern = re.compile('(' + '|'.join(special_tokens_patterns) + ')')
 
-    def encode(self, text: str, add_special_tokens: bool = True, **kwargs) -> list[int]:
+    def encode(
+            self,
+            text: str,
+            add_special_tokens: bool = True,
+    ) -> list[int]:
         token_ids = [self.bos_token_id] if add_special_tokens else []
         # iterate over chunks of text and special tokens
         # even position: chunk of text
@@ -75,29 +87,42 @@ class LlamaCppTokenizer(HuggingFaceLikeTokenizer):
                 token_ids.append(self.convert_tokens_to_ids(chunk_or_special_token))
         return token_ids
 
-    def decode(self, ids: list[int], skip_special_tokens: bool = False, **kwargs) -> str:
-        return self._tokens_to_string(ids, skip_special_tokens)
+    def decode(
+            self,
+            ids: Union[int, list[int], np.ndarray, torch.Tensor],
+            skip_special_tokens: bool = False,
+    ) -> str:
+        return self._tokens_to_string(to_list(ids), skip_special_tokens)
 
-    def convert_ids_to_tokens(self, ids: Union[int, list[int]]) -> Union[str, list[str]]:
+    def convert_ids_to_tokens(
+            self,
+            ids: Union[int, list[int], np.ndarray, torch.Tensor],
+    ) -> Union[str, list[str]]:
         if isinstance(ids, int):
             return self._id_to_token(ids)
         else:
-            return [self._id_to_token(id) for id in ids]
+            return [self._id_to_token(id) for id in to_list(ids)]
 
-    def convert_tokens_to_ids(self, tokens: Union[str, list[str]]) -> Union[int, list[int]]:
+    def convert_tokens_to_ids(
+            self,
+            tokens: Union[str, list[str]],
+    ) -> Union[int, list[int]]:
         if isinstance(tokens, str):
             return self.token_ids[tokens]
         else:
             return [self.token_ids[t] for t in tokens]
 
-    def convert_tokens_to_string(self, tokens: list[str]) -> str:
+    def convert_tokens_to_string(
+            self,
+            tokens: list[str],
+    ) -> str:
         return self._tokens_to_string(tokens, skip_special_tokens=False)
 
     def _id_to_token(self, id: int) -> str:
-        return llama_cpp.llama_token_get_text(self.llama.ctx, id).decode(ENCODING)
+        return llama_cpp.llama_token_get_text(self.llama.model, id).decode(ENCODING)
 
     def _id_to_token_type(self, id: int) -> int:
-        return llama_cpp.llama_token_get_type(self.llama.ctx, id)
+        return llama_cpp.llama_token_get_type(self.llama.model, id)
 
     def _tokens_to_string(self, tokens: list[Union[str, int]], skip_special_tokens: bool = False) -> str:
         return ''.join(self._token_to_piece(t, skip_special_tokens) for t in tokens)
