@@ -8,5 +8,9 @@ class BiasLogitsProcessor:
             self.bias_vector[token_id] = bias
 
     def __call__(self, input_ids, scores):
+        # sometimes the model has a vocab_size that is bigger than the tokenizer
+        # so that the embedding matrix can have a length that is a power of 2,
+        # but these extra tokens are never used
+        scores = scores[:, :self.tokenizer.vocab_size]
         scores = to_tensor(scores)
         return scores + self.bias_vector

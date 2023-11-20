@@ -23,6 +23,10 @@ class AcceptableLogitsProcessor:
         self.bias_vector = torch.zeros(self.tokenizer.vocab_size)
 
     def __call__(self, input_ids, scores):
+        # sometimes the model has a vocab_size that is bigger than the tokenizer
+        # so that the embedding matrix can have a length that is a power of 2,
+        # but these extra tokens are never used
+        scores = scores[:, :self.tokenizer.vocab_size]
         # handle 1D inputs
         input_ids, scores, one_dim = self.handle_dimensions(input_ids, scores)
         # update processor state

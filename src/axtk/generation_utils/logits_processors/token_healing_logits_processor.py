@@ -72,6 +72,10 @@ class TokenHealingLogitsProcessor:
         self.num_extensions = 0
 
     def __call__(self, input_ids, scores):
+        # sometimes the model has a vocab_size that is bigger than the tokenizer
+        # so that the embedding matrix can have a length that is a power of 2,
+        # but these extra tokens are never used
+        scores = scores[:, :self.tokenizer.vocab_size]
 
         # we only bias the first token generated
         if self.num_extensions >= len(self.extension_tokens):
